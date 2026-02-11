@@ -30,8 +30,7 @@ import {
   StarIcon,
   ArrowRightOnRectangleIcon,
   ExclamationCircleIcon,
-  CheckCircleIcon,
-  TriangleSolidIcon
+  CheckCircleIcon
 } from '@heroicons/react/24/solid';
 
 // Helper to convert English digits to Bengali digits
@@ -450,7 +449,7 @@ const App: React.FC = () => {
               {error && <p className="text-red-700 text-xs font-black bg-red-50 py-3 rounded-xl border border-red-200">{error}</p>}
               <button
                 type="submit"
-                className="w-full bg-army-green hover:bg-green-900 text-white font-black py-4 rounded-2xl transition-all shadow-xl active:scale-95 text-lg cursor-pointer"
+                className="w-full bg-army-green hover:bg-emerald-900 text-white font-black py-4 rounded-2xl transition-all shadow-xl active:scale-95 text-lg cursor-pointer"
               >
                 ভেরিফাই করুন
               </button>
@@ -475,7 +474,7 @@ const App: React.FC = () => {
               <p className="text-[10px] opacity-80 font-bold uppercase">সরাসরি কল করুন</p>
             </div>
             <div className="p-6 space-y-4">
-               <a href={`tel:${emergencyContact.mobile}`} className="flex items-center justify-between p-4 bg-red-50 rounded-2xl border border-red-200 group transition-all active:scale-95">
+               <a href={`tel:${emergencyContact.mobile}`} className="flex items-center justify-between p-4 bg-red-50 rounded-2xl border border-red-100 group transition-all active:scale-95">
                   <div>
                     <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">{emergencyContact.name}</p>
                     <p className="font-black text-lg text-black">{emergencyContact.mobile}</p>
@@ -492,7 +491,7 @@ const App: React.FC = () => {
 
       {/* Sidebar Drawer */}
       <aside className={`fixed top-0 left-0 h-full w-72 bg-white z-[70] shadow-2xl transform transition-transform duration-300 ease-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-8 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #4b5320 0%, #2c3112 100%)' }}>
+        <div className="p-8 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #006847 0%, #004d35 100%)' }}>
           <div className="relative z-10 text-white">
             <div className="flex justify-between items-start mb-6">
               <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-2xl border border-white/20">
@@ -503,7 +502,7 @@ const App: React.FC = () => {
               </button>
             </div>
             <h2 className="text-2xl font-black mb-1">ইপিজেড আর্মি</h2>
-            <p className="text-[9px] opacity-80 font-black uppercase tracking-widest">Dashboard v3.5</p>
+            <p className="text-[9px] opacity-80 font-black uppercase tracking-widest">Dashboard v3.6</p>
           </div>
         </div>
 
@@ -575,7 +574,7 @@ const App: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <h2 className="text-[10px] font-black text-black uppercase tracking-widest flex items-center gap-3 col-span-full px-2 mb-2">
-                <span className="bg-army-green w-6 h-1 rounded-full"></span>
+                <span className="bg-army-gold w-6 h-1 rounded-full"></span>
                 কেন্দ্রের তালিকা ({filteredCenters.length})
               </h2>
               {filteredCenters.map((center) => (
@@ -584,7 +583,7 @@ const App: React.FC = () => {
                   onClick={() => navigateToDetails(center)}
                   className="flex flex-col gap-4 bg-white p-6 rounded-3xl shadow-sm border-2 border-transparent hover:border-army-green/10 text-left w-full active:scale-95 transition-all group cursor-pointer"
                 >
-                  <div className="bg-army-green/5 text-army-green font-black w-10 h-10 flex items-center justify-center rounded-xl text-lg transition-colors group-hover:bg-army-green group-hover:text-white">
+                  <div className="bg-army-gold text-army-green font-black w-10 h-10 flex items-center justify-center rounded-xl text-lg transition-colors group-hover:bg-army-green group-hover:text-white">
                     {center.centerNumber}
                   </div>
                   <div>
@@ -757,7 +756,7 @@ const App: React.FC = () => {
             <div className="bg-white p-8 rounded-3xl shadow-xl border-t-8 border-army-green">
               <h2 className="text-2xl font-black mb-8 text-black flex items-center justify-between">
                 <span>{centers.some(c => c.id === editCenter.id) ? 'কেন্দ্র তথ্য সংশোধন' : 'নতুন কেন্দ্র যোগ'}</span>
-                <span className="text-sm bg-army-green/10 text-army-green px-3 py-1 rounded-lg font-black">কেন্দ্র নং: {editCenter.centerNumber}</span>
+                <span className="text-sm bg-army-gold text-army-green px-3 py-1 rounded-lg font-black shadow-sm">কেন্দ্র নং: {editCenter.centerNumber}</span>
               </h2>
               <div className="space-y-6 text-black">
                 <div>
@@ -795,7 +794,7 @@ const App: React.FC = () => {
                 <div className="border-t border-slate-300 pt-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-black text-lg text-black">দায়িত্বপ্রাপ্ত ব্যক্তিবর্গ</h3>
-                    <button onClick={addPersonToEdit} className="text-blue-800 bg-blue-50 px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 active:scale-95 transition-all cursor-pointer border border-blue-300">
+                    <button onClick={addPersonToEdit} className="text-emerald-800 bg-emerald-50 px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 active:scale-95 transition-all cursor-pointer border border-emerald-300">
                       <PlusIcon className="h-4 w-4" /> সদস্য যোগ করুন
                     </button>
                   </div>
@@ -828,22 +827,22 @@ const App: React.FC = () => {
         {view === 'CENTER_DETAILS' && selectedCenter && (
           <div className="space-y-6 animate-fadeIn max-w-lg mx-auto pb-12">
             <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-300 text-center relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-5">
-                <ShieldCheckIcon className="h-32 w-32 text-army-green" />
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <ShieldCheckIcon className="h-32 w-32 text-army-gold" />
               </div>
-              <div className="bg-army-green text-white px-4 py-1 rounded-lg text-[10px] font-black inline-block mb-4 relative z-10">কেন্দ্র নং {selectedCenter.centerNumber}</div>
+              <div className="bg-army-gold text-army-green px-4 py-1 rounded-lg text-[10px] font-black inline-block mb-4 relative z-10 shadow-sm">কেন্দ্র নং {selectedCenter.centerNumber}</div>
               <h2 className="text-2xl font-black text-black mb-8 relative z-10 leading-tight">{selectedCenter.name}</h2>
               <div className="grid grid-cols-1 gap-4 relative z-10">
                 <button onClick={() => setView('CENTER_INFO')} className="flex items-center gap-4 p-5 rounded-2xl bg-blue-50/50 border border-blue-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
-                  <div className="bg-blue-600 p-3 rounded-xl text-white shadow-md"><InformationCircleIcon className="h-6 w-6" /></div>
+                  <div className="bg-army-green p-3 rounded-xl text-army-gold shadow-md"><InformationCircleIcon className="h-6 w-6" /></div>
                   <div><h4 className="font-black text-blue-950">ভোটকেন্দ্র তথ্য</h4><p className="text-[10px] text-blue-800 font-black">বিস্তারিত বিবরণ</p></div>
                 </button>
                 <a href={selectedCenter.locationLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-5 rounded-2xl bg-rose-50/50 border border-rose-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
-                  <div className="bg-rose-600 p-3 rounded-xl text-white shadow-md"><MapPinIcon className="h-6 w-6" /></div>
+                  <div className="bg-army-green p-3 rounded-xl text-army-gold shadow-md"><MapPinIcon className="h-6 w-6" /></div>
                   <div><h4 className="font-black text-rose-950">অবস্থান ম্যাপ</h4><p className="text-[10px] text-rose-800 font-black">গুগল ম্যাপে দেখুন</p></div>
                 </a>
                 <button onClick={() => setView('PERSONS')} className="flex items-center gap-4 p-5 rounded-2xl bg-emerald-50/50 border border-emerald-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
-                  <div className="bg-army-green p-3 rounded-xl text-white shadow-md"><UserGroupIcon className="h-6 w-6" /></div>
+                  <div className="bg-army-green p-3 rounded-xl text-army-gold shadow-md"><UserGroupIcon className="h-6 w-6" /></div>
                   <div><h4 className="font-black text-emerald-950">যোগাযোগ</h4><p className="text-[10px] text-emerald-800 font-black">ব্যক্তিবর্গ ও নম্বর</p></div>
                 </button>
               </div>
@@ -860,15 +859,15 @@ const App: React.FC = () => {
               </div>
               <div className="space-y-6">
                 <div className="flex items-center gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-300 shadow-sm">
-                  <div className="p-3 bg-blue-100 rounded-xl"><InboxStackIcon className="h-6 w-6 text-blue-600" /></div>
+                  <div className="p-3 bg-army-green rounded-xl text-army-gold"><InboxStackIcon className="h-6 w-6" /></div>
                   <div><p className="text-[10px] font-black text-black uppercase tracking-widest">ভোট কক্ষের সংখ্যা</p><p className="font-black text-xl text-black">{selectedCenter.boothCount || 'N/A'}</p></div>
                 </div>
                 <div className="flex items-center gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-300 shadow-sm">
-                  <div className="p-3 bg-emerald-100 rounded-xl"><UserGroupIcon className="h-6 w-6 text-emerald-600" /></div>
+                  <div className="p-3 bg-army-green rounded-xl text-army-gold"><UserGroupIcon className="h-6 w-6" /></div>
                   <div><p className="text-[10px] font-black text-black uppercase tracking-widest">মোট ভোটার</p><p className="font-black text-xl text-black">{selectedCenter.voterCount || 'N/A'}</p></div>
                 </div>
                 <div className="flex items-center gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-300 shadow-sm">
-                  <div className="p-3 bg-rose-100 rounded-xl"><BuildingOfficeIcon className="h-6 w-6 text-rose-600" /></div>
+                  <div className="p-3 bg-army-green rounded-xl text-army-gold"><BuildingOfficeIcon className="h-6 w-6" /></div>
                   <div><p className="text-[10px] font-black text-black uppercase tracking-widest">অবস্থান ও তলা</p><p className="font-black text-xl text-black leading-tight">{selectedCenter.roomLocation || 'N/A'}</p></div>
                 </div>
               </div>
@@ -891,8 +890,8 @@ const App: React.FC = () => {
                     <p className="mt-2 text-army-green font-black text-lg">{p.mobile}</p>
                   </div>
                   <div className="flex gap-2">
-                    <a href={`tel:${p.mobile}`} className="p-3 bg-blue-600 text-white rounded-xl shadow-md active:scale-90 transition-transform cursor-pointer"><PhoneIcon className="h-5 w-5" /></a>
-                    <a href={`https://wa.me/${p.mobile.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-emerald-600 text-white rounded-xl shadow-md active:scale-90 transition-transform cursor-pointer"><ChatBubbleLeftRightIcon className="h-5 w-5" /></a>
+                    <a href={`tel:${p.mobile}`} className="p-3 bg-army-green text-army-gold rounded-xl shadow-md active:scale-90 transition-transform cursor-pointer border border-army-gold/30"><PhoneIcon className="h-5 w-5" /></a>
+                    <a href={`https://wa.me/${p.mobile.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-army-green text-army-gold rounded-xl shadow-md active:scale-90 transition-transform cursor-pointer border border-army-gold/30"><ChatBubbleLeftRightIcon className="h-5 w-5" /></a>
                   </div>
                 </div>
               ))}
@@ -911,7 +910,7 @@ const App: React.FC = () => {
         </button>
         
         <div className="flex-1 flex justify-center -mt-8 relative z-[60]">
-          <button onClick={goHome} className="bg-army-green text-white p-4 rounded-2xl shadow-xl border-4 border-slate-50 active:scale-95 transition-all cursor-pointer">
+          <button onClick={goHome} className="bg-army-green text-army-gold p-4 rounded-2xl shadow-xl border-4 border-slate-50 active:scale-95 transition-all cursor-pointer">
             <HomeIcon className="h-7 w-7" />
           </button>
         </div>
