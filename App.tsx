@@ -22,16 +22,14 @@ import {
   ArrowUpTrayIcon,
   ShieldCheckIcon,
   MegaphoneIcon,
-  IdentificationIcon,
   BuildingOfficeIcon,
   InboxStackIcon,
   KeyIcon,
-  AdjustmentsHorizontalIcon,
-  StarIcon,
-  ArrowRightOnRectangleIcon,
   ExclamationCircleIcon,
   CheckCircleIcon,
-  MapIcon
+  MapIcon,
+  // Fix: Added missing icon import for logout button
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/solid';
 
 // Helper to convert English digits to Bengali digits
@@ -95,11 +93,11 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   
-  // Map States
+  // Google Map States
   const [showMapPicker, setShowMapPicker] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+  const gMapRef = useRef<any>(null);
+  const gMarkerRef = useRef<any>(null);
   const [mapSearchTerm, setMapSearchTerm] = useState('');
 
   // Modal State
@@ -130,6 +128,19 @@ const App: React.FC = () => {
   const [tempEmergency, setTempEmergency] = useState<EmergencyContact>({ name: '', mobile: '' });
   const [newPasswordValue, setNewPasswordValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load Google Maps script once
+  useEffect(() => {
+    const existingScript = document.getElementById('google-maps-script');
+    if (!existingScript) {
+      const script = document.createElement('script');
+      script.id = 'google-maps-script';
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.API_KEY || ''}&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -343,67 +354,77 @@ const App: React.FC = () => {
     setView('ADMIN');
   };
 
-  // Map Logic
+  // Google Map Initialization logic for picker
   useEffect(() => {
-    if (showMapPicker && mapContainerRef.current) {
+    if (showMapPicker && mapContainerRef.current && (window as any).google) {
+      const google = (window as any).google;
+      
       // Default to Patenga area
-      const defaultPos: [number, number] = [22.2513, 91.7915];
-      let initialPos = defaultPos;
+      const patengaPos = { lat: 22.2513, lng: 91.7915 };
+      let initialPos = patengaPos;
 
-      // Try to extract coords from existing link
+      // Extract coords from existing link if possible
       const coordMatch = editCenter.locationLink?.match(/q=([\d.]+),([\d.]+)/);
       if (coordMatch) {
-        initialPos = [parseFloat(coordMatch[1]), parseFloat(coordMatch[2])];
+        initialPos = { lat: parseFloat(coordMatch[1]), lng: parseFloat(coordMatch[2]) };
       }
 
-      const L = (window as any).L;
-      if (!leafletMapRef.current) {
-        leafletMapRef.current = L.map(mapContainerRef.current).setView(initialPos, 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors'
-        }).addTo(leafletMapRef.current);
+      const mapOptions = {
+        center: initialPos,
+        zoom: 15,
+        mapTypeControl: false,
+        streetViewControl: false,
+      };
 
-        markerRef.current = L.marker(initialPos, { draggable: true }).addTo(leafletMapRef.current);
-        
-        leafletMapRef.current.on('click', (e: any) => {
-          markerRef.current.setLatLng(e.latlng);
-        });
-      } else {
-        leafletMapRef.current.setView(initialPos, 15);
-        markerRef.current.setLatLng(initialPos);
-      }
+      gMapRef.current = new google.maps.Map(mapContainerRef.current, mapOptions);
+
+      gMarkerRef.current = new google.maps.Marker({
+        position: initialPos,
+        map: gMapRef.current,
+        draggable: true,
+        animation: google.maps.Animation.DROP,
+      });
+
+      gMapRef.current.addListener('click', (e: any) => {
+        gMarkerRef.current.setPosition(e.latLng);
+      });
     }
   }, [showMapPicker]);
 
   const handleMapConfirm = () => {
-    const pos = markerRef.current.getLatLng();
-    const gMapsLink = `https://www.google.com/maps?q=${pos.lat},${pos.lng}`;
+    const pos = gMarkerRef.current.getPosition();
+    const lat = pos.lat();
+    const lng = pos.lng();
+    // Using a reliable Google Maps Query link format
+    const gMapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
     setEditCenter({ ...editCenter, locationLink: gMapsLink });
     setShowMapPicker(false);
   };
 
   const handleMapSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!mapSearchTerm) return;
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(mapSearchTerm + ', Chattogram, Bangladesh')}`);
-      const data = await response.json();
-      if (data && data.length > 0) {
-        const { lat, lon } = data[0];
-        const pos = [parseFloat(lat), parseFloat(lon)];
-        leafletMapRef.current.setView(pos, 16);
-        markerRef.current.setLatLng(pos);
+    if (!mapSearchTerm || !(window as any).google) return;
+    const google = (window as any).google;
+    const geocoder = new google.maps.Geocoder();
+    
+    geocoder.geocode({ address: mapSearchTerm + ', Chattogram, Bangladesh' }, (results: any, status: any) => {
+      if (status === 'OK' && results[0]) {
+        const pos = results[0].geometry.location;
+        gMapRef.current.setCenter(pos);
+        gMapRef.current.setZoom(17);
+        gMarkerRef.current.setPosition(pos);
+      } else {
+        console.error("Geocode was not successful: " + status);
       }
-    } catch (err) {
-      console.error("Search failed", err);
-    }
+    });
   };
 
-  // Helper to extract lat/lng for iframe preview
+  // Improved helper for Google Maps Embed
   const getMapEmbedUrl = (link: string) => {
     const match = link?.match(/q=([\d.]+),([\d.]+)/);
     if (match) {
-      return `https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(match[2])-0.005}%2C${parseFloat(match[1])-0.005}%2C${parseFloat(match[2])+0.005}%2C${parseFloat(match[1])+0.005}&layer=mapnik&marker=${match[1]}%2C${match[2]}`;
+      // Use standard Google Maps Search Embed format which is robust
+      return `https://maps.google.com/maps?q=${match[1]},${match[2]}&hl=bn&z=15&output=embed`;
     }
     return null;
   };
@@ -544,30 +565,30 @@ const App: React.FC = () => {
     <div className="min-h-screen pb-20 md:pb-8 flex flex-col bg-slate-50 overflow-x-hidden font-['Hind_Siliguri'] antialiased text-black">
       <ModalPortal />
       
-      {/* Map Picker Modal */}
+      {/* Google Map Picker Modal */}
       {showMapPicker && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             <div className="p-4 bg-army-green text-white flex justify-between items-center">
-                <h3 className="font-black">অবস্থান চিহ্নিত করুন</h3>
-                <button onClick={() => setShowMapPicker(false)}><XMarkIcon className="h-6 w-6" /></button>
+                <h3 className="font-black flex items-center gap-2"><MapPinIcon className="h-5 w-5 text-army-gold" /> অবস্থান পিন পয়েন্ট করুন</h3>
+                <button onClick={() => setShowMapPicker(false)} className="hover:rotate-90 transition-transform cursor-pointer"><XMarkIcon className="h-6 w-6" /></button>
             </div>
-            <div className="p-4 bg-gray-100">
+            <div className="p-4 bg-gray-100 shadow-inner">
                <form onSubmit={handleMapSearch} className="flex gap-2">
                  <input 
                    type="text" 
-                   className="flex-1 px-4 py-2 rounded-xl border-2 border-gray-300 font-bold text-sm" 
-                   placeholder="জায়গার নাম লিখে খুঁজুন..." 
+                   className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-300 font-bold text-sm focus:border-army-green outline-none" 
+                   placeholder="জায়গার নাম লিখে খুঁজুন (উদাঃ পতেঙ্গা গেট)..." 
                    value={mapSearchTerm}
                    onChange={e => setMapSearchTerm(e.target.value)}
                  />
-                 <button type="submit" className="bg-army-gold text-army-green px-4 py-2 rounded-xl font-black">খুঁজুন</button>
+                 <button type="submit" className="bg-army-gold text-army-green px-6 py-3 rounded-xl font-black shadow-md active:scale-95 transition-all">খুঁজুন</button>
                </form>
             </div>
-            <div ref={mapContainerRef} className="flex-1 w-full min-h-[300px]"></div>
-            <div className="p-4 border-t flex gap-4">
-              <button onClick={() => setShowMapPicker(false)} className="flex-1 py-3 bg-gray-200 rounded-xl font-black">বাতিল</button>
-              <button onClick={handleMapConfirm} className="flex-1 py-3 bg-army-green text-white rounded-xl font-black">নিশ্চিত করুন</button>
+            <div ref={mapContainerRef} className="flex-1 w-full min-h-[400px]"></div>
+            <div className="p-4 bg-slate-50 border-t flex gap-4">
+              <button onClick={() => setShowMapPicker(false)} className="flex-1 py-4 bg-gray-200 text-black rounded-xl font-black active:scale-95 transition-all">বাতিল</button>
+              <button onClick={handleMapConfirm} className="flex-1 py-4 bg-army-green text-white rounded-xl font-black shadow-lg active:scale-95 transition-all">অবস্থান নিশ্চিত করুন</button>
             </div>
           </div>
         </div>
@@ -611,7 +632,7 @@ const App: React.FC = () => {
               </button>
             </div>
             <h2 className="text-2xl font-black mb-1">ইপিজেড আর্মি</h2>
-            <p className="text-[9px] opacity-80 font-black uppercase tracking-widest">Dashboard v3.8</p>
+            <p className="text-[9px] opacity-80 font-black uppercase tracking-widest">Dashboard v4.0 (Google Maps)</p>
           </div>
         </div>
 
@@ -899,14 +920,14 @@ const App: React.FC = () => {
                   <label className="text-[10px] font-black text-black uppercase ml-1">গুগল ম্যাপ লিংক</label>
                   <div className="flex gap-2">
                     <input 
-                      placeholder="URL পেস্ট করুন বা ম্যাপ থেকে নিন" 
+                      placeholder="ম্যাপ থেকে অবস্থান পিন করুন" 
                       className="flex-1 px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-400 focus:border-army-green outline-none font-mono text-xs cursor-text text-black placeholder-gray-500" 
                       value={editCenter.locationLink || ''} 
                       onChange={e => setEditCenter({ ...editCenter, locationLink: e.target.value })} 
                     />
                     <button 
                         onClick={() => setShowMapPicker(true)}
-                        className="bg-army-gold text-army-green p-3 rounded-xl shadow-md border border-army-gold/30 flex items-center justify-center"
+                        className="bg-army-gold text-army-green p-3 rounded-xl shadow-md border border-army-gold/30 flex items-center justify-center hover:bg-army-green hover:text-army-gold transition-all active:scale-95 shadow-lg"
                     >
                         <MapIcon className="h-6 w-6" />
                     </button>
@@ -955,15 +976,20 @@ const App: React.FC = () => {
               <div className="bg-army-gold text-army-green px-4 py-1 rounded-lg text-[10px] font-black inline-block mb-4 relative z-10 shadow-sm">কেন্দ্র নং {selectedCenter.centerNumber}</div>
               <h2 className="text-2xl font-black text-black mb-8 relative z-10 leading-tight">{selectedCenter.name}</h2>
               
-              <div className="mb-8 rounded-2xl overflow-hidden border-2 border-slate-200 relative">
+              <div className="mb-8 rounded-3xl overflow-hidden border-4 border-slate-100 relative shadow-inner bg-slate-200 aspect-video">
                 {getMapEmbedUrl(selectedCenter.locationLink) ? (
                    <iframe 
-                     title="Location"
-                     className="w-full h-48 border-none"
+                     title="Google Map Location"
+                     className="w-full h-full border-none"
                      src={getMapEmbedUrl(selectedCenter.locationLink)!}
+                     allowFullScreen
+                     loading="lazy"
                    ></iframe>
                 ) : (
-                   <div className="h-48 bg-slate-100 flex items-center justify-center font-bold text-gray-500">মানচিত্রের অবস্থান নেই</div>
+                   <div className="w-full h-full flex flex-col items-center justify-center font-bold text-gray-500 gap-2">
+                     <ExclamationCircleIcon className="h-10 w-10 text-gray-400" />
+                     মানচিত্রের অবস্থান নেই
+                   </div>
                 )}
               </div>
 
@@ -974,7 +1000,7 @@ const App: React.FC = () => {
                 </button>
                 <a href={selectedCenter.locationLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-5 rounded-2xl bg-rose-50/50 border border-rose-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
                   <div className="bg-army-green p-3 rounded-xl text-army-gold shadow-md"><MapPinIcon className="h-6 w-6" /></div>
-                  <div><h4 className="font-black text-rose-950">ম্যাপ অ্যাপে দেখুন</h4><p className="text-[10px] text-rose-800 font-black">গুগল ম্যাপে যান</p></div>
+                  <div><h4 className="font-black text-rose-950">ম্যাপ অ্যাপে দেখুন</h4><p className="text-[10px] text-rose-800 font-black">Google Maps-এ যান</p></div>
                 </a>
                 <button onClick={() => setView('PERSONS')} className="flex items-center gap-4 p-5 rounded-2xl bg-emerald-50/50 border border-emerald-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
                   <div className="bg-army-green p-3 rounded-xl text-army-gold shadow-md"><UserGroupIcon className="h-6 w-6" /></div>
