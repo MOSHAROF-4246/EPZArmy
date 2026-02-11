@@ -8,22 +8,38 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --army-green: #006847;
+            --army-gold: #f2c100;
+            --surface-bg: #f3f4f6;
+        }
         body {
             font-family: 'Hind Siliguri', sans-serif;
-            background-color: #f3f4f6;
+            background-color: var(--surface-bg);
+            color: #1a1a1a;
         }
-        .bg-army-green { background-color: #006847; }
-        .text-army-green { color: #006847; }
-        .border-army-green { border-color: #006847; }
-        .bg-army-gold { background-color: #f2c100; }
-        .text-army-gold { color: #f2c100; }
-        .border-army-gold { border-color: #f2c100; }
+        .bg-army-green { background-color: var(--army-green); }
+        .text-army-green { color: var(--army-green); }
+        .bg-army-gold { background-color: var(--army-gold); }
+        .text-army-gold { color: var(--army-gold); }
+        .border-army-green { border-color: var(--army-green); }
         
-        .map-container {
-            width: 100%;
-            height: 100%;
-            min-height: 300px;
+        .army-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-top: 5px solid var(--army-green);
+            transition: all 0.2s ease-in-out;
         }
+        .army-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Custom scrollbar for military look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #e5e7eb; }
+        ::-webkit-scrollbar-thumb { background: var(--army-green); border-radius: 4px; }
     </style>
 <script type="importmap">
 {
@@ -32,8 +48,8 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/",
     "@heroicons/react/": "https://esm.sh/@heroicons/react@^2.2.0/",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
-    "vite": "https://esm.sh/vite@^7.3.1"
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
   }
 }
 </script>
