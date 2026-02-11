@@ -3,43 +3,63 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ইপিজেড আর্মি ক্যাম্প - নির্বাচন ২০২৬</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --army-green: #006847;
-            --army-gold: #f2c100;
-            --surface-bg: #f3f4f6;
+            --army-green: #0b3d2e;
+            --army-green-light: #14533d;
+            --army-gold: #d4a017;
+            --army-gold-light: #f1c40f;
+            --surface-bg: #fdfdfd;
         }
         body {
             font-family: 'Hind Siliguri', sans-serif;
             background-color: var(--surface-bg);
-            color: #1a1a1a;
+            color: #1a202c;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
         }
         .bg-army-green { background-color: var(--army-green); }
         .text-army-green { color: var(--army-green); }
         .bg-army-gold { background-color: var(--army-gold); }
         .text-army-gold { color: var(--army-gold); }
-        .border-army-green { border-color: var(--army-green); }
         
         .army-card {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border-top: 5px solid var(--army-green);
-            transition: all 0.2s ease-in-out;
+            border-radius: 28px;
+            box-shadow: 0 10px 30px -10px rgba(0, 77, 48, 0.08);
+            border: 1px solid #f1f5f9;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .army-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateY(-6px) scale(1.02);
+            box-shadow: 0 20px 40px -12px rgba(0, 77, 48, 0.15);
+            border-color: var(--army-green-light);
         }
 
-        /* Custom scrollbar for military look */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #e5e7eb; }
-        ::-webkit-scrollbar-thumb { background: var(--army-green); border-radius: 4px; }
+        .btn-shadow {
+            box-shadow: 0 8px 20px -6px rgba(0, 77, 48, 0.3);
+        }
+
+        /* Glassmorphism for specific elements */
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--army-green-light); border-radius: 10px; }
+        
+        /* Animation delays */
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
     </style>
 <script type="importmap">
 {
