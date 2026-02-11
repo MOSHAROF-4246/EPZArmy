@@ -331,7 +331,7 @@ const App: React.FC = () => {
     setView('ADMIN');
   };
 
-  // Fix: Added missing function to add a person to the edit state
+  // Helper functions for Person editing
   const addPersonToEdit = () => {
     const newPerson: Person = {
       id: Date.now().toString(),
@@ -345,7 +345,6 @@ const App: React.FC = () => {
     }));
   };
 
-  // Fix: Added missing function to update person details in the edit state
   const updatePersonInEdit = (id: string, field: keyof Person, value: string) => {
     setEditCenter(prev => ({
       ...prev,
@@ -355,7 +354,6 @@ const App: React.FC = () => {
     }));
   };
 
-  // Fix: Added missing function to remove a person from the edit state
   const removePersonFromEdit = (id: string) => {
     setEditCenter(prev => ({
       ...prev,
@@ -749,13 +747,20 @@ const App: React.FC = () => {
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">মোট কর্মকর্তা</p>
                     <p className="text-4xl font-bold">{toBengaliDigits(stats.totalPersonnel)} জন</p>
                 </div>
-                <button onClick={exportData} className="bg-white p-8 rounded-[30px] shadow-xl border border-gray-100 flex items-center justify-between group active:scale-95 transition-all">
-                    <span className="text-sm font-bold text-gray-700">ডাটা ব্যাকআপ</span>
-                    <ArrowDownTrayIcon className="h-8 w-8 text-army-green group-hover:translate-y-1 transition-transform" />
+                {/* Enhanced Backup and Restore Buttons */}
+                <button onClick={exportData} className="bg-white p-8 rounded-[30px] shadow-xl border border-gray-100 flex items-center justify-between group active:scale-95 transition-all hover:bg-gray-50">
+                    <div className="text-left">
+                        <span className="text-sm font-bold text-gray-700 block">ডাটা ব্যাকআপ</span>
+                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">ডাউনলোড করুন</span>
+                    </div>
+                    <ArrowDownTrayIcon className="h-10 w-10 text-army-green group-hover:translate-y-1 transition-transform bg-army-green/5 p-2 rounded-xl" />
                 </button>
-                <button onClick={() => fileInputRef.current?.click()} className="bg-white p-8 rounded-[30px] shadow-xl border border-gray-100 flex items-center justify-between group active:scale-95 transition-all relative overflow-hidden">
-                    <span className="text-sm font-bold text-gray-700">ডাটা রিস্টোর</span>
-                    <ArrowUpTrayIcon className="h-8 w-8 text-blue-600 group-hover:-translate-y-1 transition-transform" />
+                <button onClick={() => fileInputRef.current?.click()} className="bg-white p-8 rounded-[30px] shadow-xl border border-gray-100 flex items-center justify-between group active:scale-95 transition-all relative overflow-hidden hover:bg-gray-50">
+                    <div className="text-left">
+                        <span className="text-sm font-bold text-gray-700 block">ডাটা রিস্টোর</span>
+                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">ফাইল আপলোড</span>
+                    </div>
+                    <ArrowUpTrayIcon className="h-10 w-10 text-blue-600 group-hover:-translate-y-1 transition-transform bg-blue-50 p-2 rounded-xl" />
                     <input type="file" ref={fileInputRef} onChange={importData} className="hidden" accept=".json" />
                 </button>
             </div>
