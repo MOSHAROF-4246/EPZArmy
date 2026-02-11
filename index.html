@@ -3,54 +3,27 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ইপিজেড আর্মি ক্যাম্প - নির্বাচন ২০২৬</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --army-green: #0b3d2e;
-            --army-green-soft: #14533d;
-            --army-gold: #c69b12;
-            --bg-main: #fcfcfd;
-            --text-primary: #1a202c;
-            --text-secondary: #4a5568;
-        }
         body {
             font-family: 'Hind Siliguri', sans-serif;
-            background-color: var(--bg-main);
-            color: var(--text-primary);
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
+            background-color: #f3f4f6;
         }
-        .text-army-green { color: var(--army-green); }
-        .bg-army-green { background-color: var(--army-green); }
-        .bg-army-gold { background-color: var(--army-gold); }
+        .bg-army-green { background-color: #006847; }
+        .text-army-green { color: #006847; }
+        .border-army-green { border-color: #006847; }
+        .bg-army-gold { background-color: #f2c100; }
+        .text-army-gold { color: #f2c100; }
+        .border-army-gold { border-color: #f2c100; }
         
-        /* Minimalist Card Style */
-        .clean-card {
-            background: white;
-            border: 1px solid #edf2f7;
-            border-radius: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-            transition: all 0.2s ease-in-out;
+        .map-container {
+            width: 100%;
+            height: 100%;
+            min-height: 300px;
         }
-        .clean-card:hover {
-            border-color: #cbd5e0;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
-
-        /* High Readability Adjustments */
-        h1, h2, h3 { letter-spacing: -0.01em; }
-        p { line-height: 1.6; }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-        
-        /* Mobile Touch targets */
-        button, a { min-height: 44px; }
     </style>
 <script type="importmap">
 {
@@ -59,8 +32,8 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/",
     "@heroicons/react/": "https://esm.sh/@heroicons/react@^2.2.0/",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
+    "vite": "https://esm.sh/vite@^7.3.1"
   }
 }
 </script>
