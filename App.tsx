@@ -28,8 +28,15 @@ import {
   KeyIcon,
   AdjustmentsHorizontalIcon,
   StarIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  ExclamationCircleIcon
 } from '@heroicons/react/24/solid';
+
+// Helper to convert English digits to Bengali digits
+const toBengaliDigits = (num: string | number) => {
+  const bengaliDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return num.toString().replace(/\d/g, (d) => bengaliDigits[parseInt(d)]);
+};
 
 const App: React.FC = () => {
   // Persistence logic - Centers
@@ -48,19 +55,25 @@ const App: React.FC = () => {
   const [userPassword, setUserPassword] = useState(() => localStorage.getItem('app_user_password') || 'EPZArmy');
   const [adminPassword, setAdminPassword] = useState(() => localStorage.getItem('app_admin_password') || 'admin123');
 
+  // Persistence logic - Session State
+  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('app_is_logged_in') === 'true');
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => localStorage.getItem('app_is_admin_logged_in') === 'true');
+
   useEffect(() => {
     localStorage.setItem('voting_centers_data_v3', JSON.stringify(centers));
     localStorage.setItem('emergency_contact', JSON.stringify(emergencyContact));
     localStorage.setItem('app_user_password', userPassword);
     localStorage.setItem('app_admin_password', adminPassword);
-  }, [centers, emergencyContact, userPassword, adminPassword]);
+    localStorage.setItem('app_is_logged_in', isLoggedIn.toString());
+    localStorage.setItem('app_is_admin_logged_in', isAdminLoggedIn.toString());
+  }, [centers, emergencyContact, userPassword, adminPassword, isLoggedIn, isAdminLoggedIn]);
 
   const [inputPassword, setInputPassword] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [inputAdminPassword, setInputAdminPassword] = useState('');
   
-  const [view, setView] = useState<ViewState>('HOME');
+  const [view, setView] = useState<ViewState>(() => {
+    return isAdminLoggedIn ? 'ADMIN' : 'HOME';
+  });
   const [selectedCenter, setSelectedCenter] = useState<VotingCenter | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
@@ -70,6 +83,7 @@ const App: React.FC = () => {
 
   // Edit State
   const [editCenter, setEditCenter] = useState<Partial<VotingCenter>>({});
+  const [tempEmergency, setTempEmergency] = useState<EmergencyContact>({ name: '', mobile: '' });
   const [newPasswordValue, setNewPasswordValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,12 +109,16 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setIsAdminLoggedIn(false);
-    setInputPassword('');
-    setInputAdminPassword('');
-    setView('HOME');
-    setIsSidebarOpen(false);
+    if (window.confirm('আপনি কি লগআউট করতে চান?')) {
+      setIsLoggedIn(false);
+      setIsAdminLoggedIn(false);
+      localStorage.removeItem('app_is_logged_in');
+      localStorage.removeItem('app_is_admin_logged_in');
+      setInputPassword('');
+      setInputAdminPassword('');
+      setView('HOME');
+      setIsSidebarOpen(false);
+    }
   };
 
   const exportData = () => {
@@ -170,24 +188,33 @@ const App: React.FC = () => {
     setView('HOME');
     setSelectedCenter(null);
     setIsSidebarOpen(false);
+    setSearchQuery('');
   };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // Admin Actions
+  // Admin Actions (Delete Fixed)
   const deleteCenter = (id: string) => {
     if (window.confirm('আপনি কি নিশ্চিত যে এই কেন্দ্রটি মুছে ফেলতে চান?')) {
-      setCenters(centers.filter(c => c.id !== id));
+      const updatedCenters = centers.filter(c => c.id !== id);
+      setCenters(updatedCenters);
+      // Immediately clear if it was selected
+      if (selectedCenter?.id === id) {
+        setSelectedCenter(null);
+      }
     }
   };
 
   const startEdit = (center?: VotingCenter) => {
     if (center) {
-      setEditCenter({ ...center });
+      // Edit existing
+      setEditCenter(JSON.parse(JSON.stringify(center)));
     } else {
+      // Add new - Auto generate serial
+      const nextNum = (centers.length + 1).toString().padStart(2, '0');
       setEditCenter({
         id: Date.now().toString(),
-        centerNumber: '',
+        centerNumber: toBengaliDigits(nextNum),
         name: '',
         boothCount: '',
         voterCount: '',
@@ -204,17 +231,22 @@ const App: React.FC = () => {
       alert('নাম এবং নম্বর আবশ্যক');
       return;
     }
-    const exists = centers.find(c => c.id === editCenter.id);
     const finalCenter = {
-      ...editCenter,
+      id: editCenter.id,
+      centerNumber: editCenter.centerNumber,
+      name: editCenter.name,
       boothCount: editCenter.boothCount || '',
       voterCount: editCenter.voterCount || '',
       roomLocation: editCenter.roomLocation || '',
+      locationLink: editCenter.locationLink || '',
       importantPersons: editCenter.importantPersons || []
     } as VotingCenter;
 
-    if (exists) {
-      setCenters(centers.map(c => c.id === editCenter.id ? finalCenter : c));
+    const existsIndex = centers.findIndex(c => c.id === editCenter.id);
+    if (existsIndex > -1) {
+      const updated = [...centers];
+      updated[existsIndex] = finalCenter;
+      setCenters(updated);
     } else {
       setCenters([...centers, finalCenter]);
     }
@@ -248,6 +280,21 @@ const App: React.FC = () => {
     });
   };
 
+  const saveEmergencyContact = () => {
+    if (!tempEmergency.name || !tempEmergency.mobile) {
+      alert('সবগুলো ঘর পূরণ করুন!');
+      return;
+    }
+    setEmergencyContact(tempEmergency);
+    alert('জরুরী যোগাযোগ নম্বর সফলভাবে সেভ হয়েছে!');
+  };
+
+  useEffect(() => {
+    if (view === 'ADMIN') {
+      setTempEmergency(emergencyContact);
+    }
+  }, [view, emergencyContact]);
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-200 p-4 font-['Hind_Siliguri']">
@@ -258,21 +305,21 @@ const App: React.FC = () => {
                 <LockClosedIcon className="h-10 w-10 text-white" />
               </div>
             </div>
-            <h1 className="text-2xl font-black text-gray-800 mb-2">প্রবেশাধিকার</h1>
-            <p className="text-gray-400 font-bold mb-8 uppercase tracking-widest text-[10px]">ইপিজেড আর্মি ক্যাম্প - ২০২৬</p>
+            <h1 className="text-2xl font-black text-gray-900 mb-2">প্রবেশাধিকার</h1>
+            <p className="text-gray-700 font-bold mb-8 uppercase tracking-widest text-[10px]">ইপিজেড আর্মি ক্যাম্প - ২০২৬</p>
             <form onSubmit={handleLogin} className="space-y-5">
               <input
                 type="password"
                 placeholder="পাসওয়ার্ড দিন"
-                className="w-full px-4 py-4 rounded-2xl border-2 border-gray-100 focus:outline-none focus:border-army-green transition-all bg-gray-50 text-center text-xl font-black text-gray-800"
+                className="w-full px-4 py-4 rounded-2xl border-2 border-gray-300 focus:outline-none focus:border-army-green transition-all bg-gray-50 text-center text-xl font-black text-gray-900 cursor-text placeholder-gray-500"
                 value={inputPassword}
                 autoFocus
                 onChange={(e) => setInputPassword(e.target.value)}
               />
-              {error && <p className="text-red-600 text-xs font-black bg-red-50 py-3 rounded-xl border border-red-100">{error}</p>}
+              {error && <p className="text-red-700 text-xs font-black bg-red-50 py-3 rounded-xl border border-red-200">{error}</p>}
               <button
                 type="submit"
-                className="w-full bg-army-green hover:bg-green-900 text-white font-black py-4 rounded-2xl transition-all shadow-xl active:scale-95 text-lg"
+                className="w-full bg-army-green hover:bg-green-900 text-white font-black py-4 rounded-2xl transition-all shadow-xl active:scale-95 text-lg cursor-pointer"
               >
                 ভেরিফাই করুন
               </button>
@@ -284,7 +331,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pb-20 md:pb-8 flex flex-col bg-slate-50 overflow-x-hidden font-['Hind_Siliguri'] antialiased">
+    <div className="min-h-screen pb-20 md:pb-8 flex flex-col bg-slate-50 overflow-x-hidden font-['Hind_Siliguri'] antialiased text-gray-900">
       {/* SOS Modal */}
       {showSOS && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeInFast">
@@ -295,70 +342,65 @@ const App: React.FC = () => {
               <p className="text-[10px] opacity-80 font-bold uppercase">সরাসরি কল করুন</p>
             </div>
             <div className="p-6 space-y-4">
-               <a href={`tel:${emergencyContact.mobile}`} className="flex items-center justify-between p-4 bg-red-50 rounded-2xl border border-red-100 group">
+               <a href={`tel:${emergencyContact.mobile}`} className="flex items-center justify-between p-4 bg-red-50 rounded-2xl border border-red-100 group transition-all active:scale-95">
                   <div>
                     <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">{emergencyContact.name}</p>
-                    <p className="font-black text-lg text-gray-800">{emergencyContact.mobile}</p>
+                    <p className="font-black text-lg text-gray-900">{emergencyContact.mobile}</p>
                   </div>
                   <div className="bg-red-600 p-3 rounded-xl text-white">
                     <PhoneIcon className="h-5 w-5" />
                   </div>
                </a>
-               <button onClick={() => setShowSOS(false)} className="w-full py-2 text-gray-400 font-black uppercase tracking-widest text-[10px]">বন্ধ করুন</button>
+               <button onClick={() => setShowSOS(false)} className="w-full py-2 text-gray-700 font-black uppercase tracking-widest text-[10px] cursor-pointer">বন্ধ করুন</button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] transition-opacity animate-fadeInFast" onClick={toggleSidebar} />
       )}
 
       {/* Sidebar Drawer */}
       <aside className={`fixed top-0 left-0 h-full w-72 bg-white z-[70] shadow-2xl transform transition-transform duration-300 ease-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-8 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #4b5320 0%, #2c3112 100%)' }}>
-          <div className="relative z-10">
+          <div className="relative z-10 text-white">
             <div className="flex justify-between items-start mb-6">
               <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-2xl border border-white/20">
                    <ShieldCheckIcon className="h-8 w-8 text-white" />
               </div>
-              <button onClick={toggleSidebar} className="p-2 hover:bg-white/10 rounded-full">
+              <button onClick={toggleSidebar} className="p-2 hover:bg-white/10 rounded-full cursor-pointer">
                 <XMarkIcon className="h-6 w-6 text-white" />
               </button>
             </div>
             <h2 className="text-2xl font-black mb-1">ইপিজেড আর্মি</h2>
-            <p className="text-[9px] opacity-70 font-black uppercase tracking-widest">Dashboard v3.0</p>
+            <p className="text-[9px] opacity-80 font-black uppercase tracking-widest">Dashboard v3.3</p>
           </div>
         </div>
 
         <nav className="p-4 space-y-1">
-          <button onClick={goHome} className={`flex items-center gap-4 w-full p-4 rounded-xl transition-all ${view === 'HOME' ? 'bg-[#4b5320] text-white font-black' : 'text-gray-500 hover:bg-gray-100 font-bold'}`}>
+          <button onClick={goHome} className={`flex items-center gap-4 w-full p-4 rounded-xl transition-all cursor-pointer ${view === 'HOME' ? 'bg-army-green text-white font-black' : 'text-gray-800 hover:bg-gray-100 font-bold'}`}>
             <HomeIcon className="h-5 w-5" />
             <span className="text-sm">মূল পাতা</span>
           </button>
           
           <div className="border-t border-gray-100 my-4 pt-4">
-            <p className="px-4 text-[9px] uppercase font-black text-gray-300 tracking-widest mb-2">নিরাপত্তা ও প্রশাসন</p>
-            <button onClick={() => { isAdminLoggedIn ? setView('ADMIN') : setView('ADMIN_LOGIN'); setIsSidebarOpen(false); }} className={`flex items-center gap-4 w-full p-4 rounded-xl transition-all ${view === 'ADMIN' ? 'bg-orange-600 text-white font-black' : 'text-gray-500 hover:bg-gray-100 font-bold'}`}>
+            <p className="px-4 text-[9px] uppercase font-black text-gray-700 tracking-widest mb-2">নিরাপত্তা ও প্রশাসন</p>
+            <button onClick={() => { isAdminLoggedIn ? setView('ADMIN') : setView('ADMIN_LOGIN'); setIsSidebarOpen(false); }} className={`flex items-center gap-4 w-full p-4 rounded-xl transition-all cursor-pointer ${view === 'ADMIN' ? 'bg-orange-600 text-white font-black' : 'text-gray-800 hover:bg-gray-100 font-bold'}`}>
               <Cog6ToothIcon className="h-5 w-5" />
               <span className="text-sm">অ্যাডমিন প্যানেল</span>
             </button>
-            <button onClick={() => { exportData(); setIsSidebarOpen(false); }} className="flex items-center gap-4 w-full p-4 rounded-xl text-gray-500 hover:bg-gray-100 font-bold transition-all">
+            <button onClick={() => { exportData(); setIsSidebarOpen(false); }} className="flex items-center gap-4 w-full p-4 rounded-xl text-gray-800 hover:bg-gray-100 font-bold transition-all cursor-pointer">
               <ArrowDownTrayIcon className="h-5 w-5" />
               <span className="text-sm">ব্যাকআপ ডাটা</span>
             </button>
           </div>
 
           <div className="border-t border-gray-100 my-4 pt-4">
-            <p className="px-4 text-[9px] uppercase font-black text-gray-300 tracking-widest mb-2">সেটিংস</p>
-            <button onClick={() => { setView('SETTINGS'); setIsSidebarOpen(false); }} className="flex items-center gap-4 w-full p-4 rounded-xl text-gray-500 hover:bg-gray-100 font-bold transition-all">
+            <p className="px-4 text-[9px] uppercase font-black text-gray-700 tracking-widest mb-2">সেটিংস</p>
+            <button onClick={() => { setView('SETTINGS'); setIsSidebarOpen(false); }} className={`flex items-center gap-4 w-full p-4 rounded-xl transition-all cursor-pointer ${view === 'SETTINGS' ? 'bg-blue-600 text-white font-black' : 'text-gray-800 hover:bg-gray-100 font-bold'}`}>
               <KeyIcon className="h-5 w-5" />
               <span className="text-sm">পাসওয়ার্ড পরিবর্তন</span>
             </button>
           </div>
           
-          <button onClick={handleLogout} className="flex items-center gap-4 w-full p-4 rounded-xl text-red-600 hover:bg-red-50 transition-all font-black mt-8">
+          <button onClick={handleLogout} className="flex items-center gap-4 w-full p-4 rounded-xl text-red-700 hover:bg-red-50 transition-all font-black mt-8 cursor-pointer">
             <ArrowRightOnRectangleIcon className="h-5 w-5" />
             <span className="text-sm">লগআউট</span>
           </button>
@@ -366,40 +408,40 @@ const App: React.FC = () => {
       </aside>
 
       {/* Top Header */}
-      <header className="bg-army-green text-white p-4 md:p-6 sticky top-0 z-50 shadow-lg border-b border-white/5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <button onClick={toggleSidebar} className="p-2 -ml-2 hover:bg-white/10 rounded-xl transition-all">
-            <Bars3Icon className="h-7 w-7 text-white" />
+      <header className="bg-army-green text-white p-4 md:p-6 sticky top-0 z-50 shadow-lg border-b border-white/5 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto w-full flex items-center justify-between gap-4">
+          <button onClick={toggleSidebar} className="p-2 hover:bg-white/10 rounded-xl transition-all flex-shrink-0 cursor-pointer">
+            <Bars3Icon className="h-6 w-6 text-white" />
           </button>
-          <div className="flex-1 text-center cursor-pointer px-2" onClick={goHome}>
-            <h1 className="text-lg md:text-2xl font-black leading-tight tracking-tight">ইপিজেড আর্মি ক্যাম্প</h1>
-            <p className="text-[8px] md:text-[10px] opacity-80 uppercase tracking-widest font-black">ত্রোয়োদশ সংসদ নির্বাচন ২০২৬</p>
+          <div className="flex-1 text-center cursor-pointer" onClick={goHome}>
+            <h1 className="text-base md:text-2xl font-black leading-tight tracking-tight text-white">ইপিজেড আর্মি ক্যাম্প</h1>
+            <p className="text-[7px] md:text-[10px] opacity-80 uppercase tracking-widest font-black text-white">ত্রোয়োদশ সংসদ নির্বাচন ২০২৬</p>
           </div>
-          <button onClick={() => setShowSOS(true)} className="p-2 -mr-2 bg-red-600/20 text-red-400 rounded-xl border border-red-600/20">
-            <MegaphoneIcon className="h-7 w-7" />
+          <button onClick={() => setShowSOS(true)} className="p-2.5 bg-red-600 text-white rounded-xl shadow-md border border-red-500 flex-shrink-0 active:scale-95 cursor-pointer">
+            <MegaphoneIcon className="h-5 w-5" />
           </button>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl mx-auto w-full p-4 md:p-10">
+      <main className="flex-1 max-w-6xl mx-auto w-full p-4 md:p-8 overflow-y-auto">
         {view === 'HOME' && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-6 w-6 text-gray-300" />
+                <MagnifyingGlassIcon className="h-6 w-6 text-gray-800" />
               </div>
               <input
                 type="text"
-                placeholder="খুঁজুন..."
-                className="block w-full pl-16 pr-6 py-4 border-none rounded-2xl bg-white shadow-md focus:ring-4 focus:ring-army-green/5 outline-none text-lg font-black text-gray-800 placeholder:text-gray-300 placeholder:font-bold"
+                placeholder="নাম বা নম্বর দিয়ে খুঁজুন..."
+                className="block w-full pl-16 pr-6 py-4 border-2 border-transparent rounded-2xl bg-white shadow-md focus:ring-4 focus:ring-army-green/5 outline-none text-lg font-black text-gray-900 cursor-text placeholder-gray-600"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <h2 className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-3 col-span-full px-2">
+              <h2 className="text-[10px] font-black text-gray-800 uppercase tracking-widest flex items-center gap-3 col-span-full px-2 mb-2">
                 <span className="bg-army-green w-6 h-1 rounded-full"></span>
                 কেন্দ্রের তালিকা ({filteredCenters.length})
               </h2>
@@ -407,89 +449,293 @@ const App: React.FC = () => {
                 <button
                   key={center.id}
                   onClick={() => navigateToDetails(center)}
-                  className="flex flex-col gap-4 bg-white p-6 rounded-3xl shadow-sm border-2 border-transparent hover:border-army-green/10 text-left w-full active:scale-95 transition-all"
+                  className="flex flex-col gap-4 bg-white p-6 rounded-3xl shadow-sm border-2 border-transparent hover:border-army-green/10 text-left w-full active:scale-95 transition-all group cursor-pointer"
                 >
-                  <div className="bg-army-green/5 text-army-green font-black w-12 h-12 flex items-center justify-center rounded-xl text-xl">
+                  <div className="bg-army-green/5 text-army-green font-black w-10 h-10 flex items-center justify-center rounded-xl text-lg transition-colors group-hover:bg-army-green group-hover:text-white">
                     {center.centerNumber}
                   </div>
                   <div>
-                    <h3 className="font-black text-gray-800 text-lg leading-tight mb-1">{center.name}</h3>
-                    <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest">বিস্তারিত তথ্য</p>
+                    <h3 className="font-black text-gray-900 text-lg leading-tight mb-1">{center.name}</h3>
+                    <p className="text-[9px] text-gray-700 font-black uppercase tracking-widest"> বিস্তারিত তথ্য দেখুন</p>
                   </div>
                 </button>
               ))}
+              {filteredCenters.length === 0 && (
+                <div className="col-span-full p-12 text-center text-gray-700 font-black flex flex-col items-center gap-4">
+                  <ExclamationCircleIcon className="h-12 w-12 text-gray-300" />
+                  <p>কোন তথ্য পাওয়া যায়নি!</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {view === 'SETTINGS' && (
+          <div className="max-w-md mx-auto animate-fadeIn">
+            <div className="bg-white p-8 rounded-3xl shadow-xl border-t-8 border-army-green">
+              <h2 className="text-xl font-black mb-6 flex items-center gap-3 text-gray-900">
+                <KeyIcon className="h-6 w-6 text-army-green" />
+                পাসওয়ার্ড পরিবর্তন
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black text-gray-700 uppercase ml-1">নতুন পাসওয়ার্ড</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-300 focus:border-army-green outline-none font-black text-center cursor-text text-gray-900 placeholder-gray-400"
+                    value={newPasswordValue}
+                    onChange={(e) => setNewPasswordValue(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={goHome} className="flex-1 py-3 bg-slate-100 text-gray-700 rounded-xl font-black active:scale-95 cursor-pointer">বাতিল</button>
+                  <button 
+                    onClick={() => {
+                      if (!newPasswordValue) return alert('পাসওয়ার্ড দিন!');
+                      setUserPassword(newPasswordValue);
+                      setNewPasswordValue('');
+                      alert('পাসওয়ার্ড পরিবর্তিত হয়েছে!');
+                      goHome();
+                    }}
+                    className="flex-1 py-3 bg-army-green text-white rounded-xl font-black shadow-lg active:scale-95 cursor-pointer"
+                  >
+                    সেভ করুন
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'ADMIN_LOGIN' && (
+          <div className="max-w-xs mx-auto mt-20 bg-white p-8 rounded-3xl shadow-xl border-t-8 border-orange-500 animate-fadeIn">
+             <h2 className="text-xl font-black text-center mb-6 text-gray-900">অ্যাডমিন কন্ট্রোল</h2>
+             <form onSubmit={handleAdminLogin} className="space-y-4">
+               <input type="password" placeholder="অ্যাডমিন পিন দিন" autoFocus className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-300 focus:border-orange-500 outline-none text-center font-black cursor-text text-gray-900 placeholder-gray-400" value={inputAdminPassword} onChange={e => setInputAdminPassword(e.target.value)} />
+               {adminError && <p className="text-red-700 text-[10px] text-center font-bold">{adminError}</p>}
+               <button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-xl font-black shadow-lg active:scale-95 cursor-pointer">প্রবেশ করুন</button>
+             </form>
+           </div>
+        )}
+
+        {view === 'ADMIN' && (
+          <div className="space-y-6 animate-fadeIn pb-12">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                <p className="text-[10px] font-black text-gray-700 uppercase">মোট কেন্দ্র</p>
+                <p className="text-3xl font-black text-gray-900">{stats.totalCenters}</p>
+              </div>
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                <p className="text-[10px] font-black text-gray-700 uppercase">মোট সদস্য</p>
+                <p className="text-3xl font-black text-gray-900">{stats.totalPersonnel}</p>
+              </div>
+              <button onClick={exportData} className="bg-white p-4 rounded-2xl shadow-sm border border-orange-200 flex items-center justify-between group active:scale-95 transition-all cursor-pointer">
+                <span className="text-sm font-black text-orange-700">ব্যাকআপ</span>
+                <ArrowDownTrayIcon className="h-6 w-6 text-orange-400 group-hover:text-orange-700 transition-colors" />
+              </button>
+              <button onClick={() => fileInputRef.current?.click()} className="bg-white p-4 rounded-2xl shadow-sm border border-blue-200 flex items-center justify-between group active:scale-95 transition-all cursor-pointer">
+                <span className="text-sm font-black text-blue-700">রিস্টোর</span>
+                <ArrowUpTrayIcon className="h-6 w-6 text-blue-400 group-hover:text-blue-700 transition-colors" />
+                <input type="file" ref={fileInputRef} onChange={importData} className="hidden" accept=".json" />
+              </button>
+            </div>
+
+            {/* Emergency Contact Settings */}
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-red-100 space-y-4">
+              <h2 className="text-lg font-black text-gray-900 flex items-center gap-3">
+                <MegaphoneIcon className="h-6 w-6 text-red-600" />
+                জরুরী যোগাযোগ সেটিংস
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-gray-800 uppercase ml-1">দায়িত্বপ্রাপ্তর নাম</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-2 rounded-xl bg-slate-50 border-2 border-gray-200 focus:border-red-600 outline-none font-bold cursor-text text-gray-900" 
+                    value={tempEmergency.name} 
+                    onChange={e => setTempEmergency({...tempEmergency, name: e.target.value})} 
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-gray-800 uppercase ml-1">মোবাইল নম্বর</label>
+                  <input 
+                    type="text" 
+                    className="w-full px-4 py-2 rounded-xl bg-slate-50 border-2 border-gray-200 focus:border-red-600 outline-none font-bold cursor-text text-gray-900" 
+                    value={tempEmergency.mobile} 
+                    onChange={e => setTempEmergency({...tempEmergency, mobile: e.target.value})} 
+                  />
+                </div>
+              </div>
+              <button onClick={saveEmergencyContact} className="bg-red-600 text-white px-6 py-2 rounded-xl font-black shadow-md hover:bg-red-700 active:scale-95 transition-all cursor-pointer">
+                জরুরী নম্বর সেভ করুন
+              </button>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-3xl shadow-sm gap-4 border border-slate-100">
+              <h2 className="text-xl font-black text-gray-900">কেন্দ্র ব্যবস্থাপনা</h2>
+              <button onClick={() => startEdit()} className="bg-army-green text-white px-6 py-3 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all cursor-pointer">
+                <PlusIcon className="h-5 w-5" /> নতুন কেন্দ্র যোগ করুন
+              </button>
+            </div>
+
+            <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-slate-200">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm min-w-[500px]">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr className="text-gray-900">
+                      <th className="px-6 py-4 font-black uppercase text-[10px] w-20">নং</th>
+                      <th className="px-6 py-4 font-black uppercase text-[10px]">কেন্দ্রের নাম</th>
+                      <th className="px-6 py-4 font-black uppercase text-[10px] text-right">অ্যাকশন</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-gray-900">
+                    {centers.map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4 font-black text-army-green text-base">{c.centerNumber}</td>
+                        <td className="px-6 py-4 font-bold text-gray-900">{c.name}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => startEdit(c)} className="p-2 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer border border-blue-100 shadow-sm">
+                              <PencilSquareIcon className="h-5 w-5" />
+                            </button>
+                            <button onClick={() => deleteCenter(c.id)} className="p-2 text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors cursor-pointer border border-red-100 shadow-sm">
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {centers.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-6 py-12 text-center text-gray-700 font-bold italic">কোন কেন্দ্র যোগ করা হয়নি</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'EDIT_CENTER' && (
+          <div className="max-w-2xl mx-auto animate-fadeIn pb-12">
+            <div className="bg-white p-8 rounded-3xl shadow-xl border-t-8 border-army-green">
+              <h2 className="text-2xl font-black mb-8 text-gray-900 flex items-center justify-between">
+                <span>{centers.some(c => c.id === editCenter.id) ? 'কেন্দ্র তথ্য সংশোধন' : 'নতুন কেন্দ্র যোগ'}</span>
+                <span className="text-sm bg-army-green/10 text-army-green px-3 py-1 rounded-lg">কেন্দ্র নং: {editCenter.centerNumber}</span>
+              </h2>
+              <div className="space-y-6">
+                <div>
+                  <label className="text-[10px] font-black text-gray-800 uppercase ml-1">কেন্দ্রের নাম</label>
+                  <input 
+                    type="text" 
+                    placeholder="যেমন: পতেঙ্গা উচ্চ বিদ্যালয়" 
+                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-300 focus:border-army-green outline-none font-black cursor-text text-gray-900 placeholder-gray-400" 
+                    value={editCenter.name || ''} 
+                    onChange={e => setEditCenter({ ...editCenter, name: e.target.value })} 
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-800 uppercase ml-1">ভোট কক্ষ সংখ্যা</label>
+                    <input placeholder="যেমন: ১০" className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-300 focus:border-army-green outline-none font-bold cursor-text text-gray-900 placeholder-gray-400" value={editCenter.boothCount || ''} onChange={e => setEditCenter({ ...editCenter, boothCount: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-gray-800 uppercase ml-1">মোট ভোটার সংখ্যা</label>
+                    <input placeholder="যেমন: ৫০০০" className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-300 focus:border-army-green outline-none font-bold cursor-text text-gray-900 placeholder-gray-400" value={editCenter.voterCount || ''} onChange={e => setEditCenter({ ...editCenter, voterCount: e.target.value })} />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-[10px] font-black text-gray-800 uppercase ml-1">অবস্থান ও তলা</label>
+                  <input placeholder="যেমন: ২য় তলা, দক্ষিণ ভবন" className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-300 focus:border-army-green outline-none font-bold cursor-text text-gray-900 placeholder-gray-400" value={editCenter.roomLocation || ''} onChange={e => setEditCenter({ ...editCenter, roomLocation: e.target.value })} />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-gray-800 uppercase ml-1">গুগল ম্যাপ লিংক</label>
+                  <input placeholder="URL পেস্ট করুন" className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-300 focus:border-army-green outline-none font-mono text-xs cursor-text text-gray-900 placeholder-gray-400" value={editCenter.locationLink || ''} onChange={e => setEditCenter({ ...editCenter, locationLink: e.target.value })} />
+                </div>
+
+                <div className="border-t border-slate-200 pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-black text-lg text-gray-900">দায়িত্বপ্রাপ্ত ব্যক্তিবর্গ</h3>
+                    <button onClick={addPersonToEdit} className="text-blue-700 bg-blue-50 px-4 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 active:scale-95 transition-all cursor-pointer border border-blue-200">
+                      <PlusIcon className="h-4 w-4" /> সদস্য যোগ করুন
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {(editCenter.importantPersons || []).map(p => (
+                      <div key={p.id} className="p-5 bg-slate-50 rounded-2xl relative border border-gray-200 shadow-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <input placeholder="নাম" className="bg-white px-4 py-2 rounded-xl border border-gray-300 text-sm font-bold cursor-text text-gray-900 placeholder-gray-400" value={p.name} onChange={e => updatePersonInEdit(p.id, 'name', e.target.value)} />
+                          <input placeholder="পদবী" className="bg-white px-4 py-2 rounded-xl border border-gray-300 text-sm font-bold cursor-text text-gray-900 placeholder-gray-400" value={p.designation} onChange={e => updatePersonInEdit(p.id, 'designation', e.target.value)} />
+                          <input placeholder="মোবাইল নম্বর" className="bg-white px-4 py-2 rounded-xl border border-gray-300 text-sm font-bold col-span-1 md:col-span-2 cursor-text text-gray-900 placeholder-gray-400" value={p.mobile} onChange={e => updatePersonInEdit(p.id, 'mobile', e.target.value)} />
+                        </div>
+                        <button onClick={() => removePersonFromEdit(p.id)} className="absolute -top-2 -right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg active:scale-90 cursor-pointer"><XMarkIcon className="h-4 w-4" /></button>
+                      </div>
+                    ))}
+                    {(editCenter.importantPersons || []).length === 0 && (
+                      <p className="text-center text-gray-600 text-xs py-4 font-bold italic">কোন সদস্য যোগ করা হয়নি</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-6">
+                  <button onClick={() => setView('ADMIN')} className="flex-1 py-4 bg-slate-100 text-gray-700 rounded-2xl font-black active:scale-95 transition-all cursor-pointer shadow-sm">বাতিল</button>
+                  <button onClick={saveCenter} className="flex-1 py-4 bg-army-green text-white rounded-2xl font-black shadow-lg active:scale-95 transition-all cursor-pointer">তথ্য সংরক্ষণ করুন</button>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {view === 'CENTER_DETAILS' && selectedCenter && (
-          <div className="space-y-6 animate-fadeIn">
-            <div className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-xl border border-slate-50 relative overflow-hidden">
-              <div className="relative z-10 flex flex-col items-center text-center">
-                <div className="bg-army-green text-white px-5 py-2 rounded-xl text-[10px] font-black mb-6">
-                  কেন্দ্র নং {selectedCenter.centerNumber}
-                </div>
-                <h2 className="text-2xl md:text-4xl font-black text-gray-800 mb-10 tracking-tight leading-snug">{selectedCenter.name}</h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                  <button onClick={() => setView('CENTER_INFO')} className="flex items-center gap-4 p-5 rounded-2xl bg-blue-50/50 border border-blue-100 text-left group">
-                    <div className="bg-blue-600 p-4 rounded-xl text-white shadow-lg"><InformationCircleIcon className="h-8 w-8" /></div>
-                    <div className="flex-1">
-                      <h4 className="font-black text-lg text-blue-900 leading-none mb-1">ভোটকেন্দ্র তথ্য</h4>
-                      <p className="text-[9px] font-bold text-blue-600/60">বিস্তারিত বিবরণ</p>
-                    </div>
-                  </button>
-                  <a href={selectedCenter.locationLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-5 rounded-2xl bg-rose-50/50 border border-rose-100 text-left group">
-                    <div className="bg-rose-600 p-4 rounded-xl text-white shadow-lg"><MapPinIcon className="h-8 w-8" /></div>
-                    <div className="flex-1">
-                      <h4 className="font-black text-lg text-rose-900 leading-none mb-1">অবস্থান ম্যাপ</h4>
-                      <p className="text-[9px] font-bold text-rose-600/60">গুগল ম্যাপে দেখুন</p>
-                    </div>
-                  </a>
-                  <button onClick={() => setView('PERSONS')} className="flex items-center gap-4 p-5 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-left group">
-                    <div className="bg-army-green p-4 rounded-xl text-white shadow-lg"><UserGroupIcon className="h-8 w-8" /></div>
-                    <div className="flex-1">
-                      <h4 className="font-black text-lg text-emerald-900 leading-none mb-1">যোগাযোগ</h4>
-                      <p className="text-[9px] font-bold text-emerald-600/60">ব্যক্তিবর্গ ও নম্বর</p>
-                    </div>
-                  </button>
-                </div>
+          <div className="space-y-6 animate-fadeIn max-w-lg mx-auto pb-12">
+            <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-200 text-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-5">
+                <ShieldCheckIcon className="h-32 w-32 text-army-green" />
+              </div>
+              <div className="bg-army-green text-white px-4 py-1 rounded-lg text-[10px] font-black inline-block mb-4 relative z-10">কেন্দ্র নং {selectedCenter.centerNumber}</div>
+              <h2 className="text-2xl font-black text-gray-900 mb-8 relative z-10 leading-tight">{selectedCenter.name}</h2>
+              <div className="grid grid-cols-1 gap-4 relative z-10">
+                <button onClick={() => setView('CENTER_INFO')} className="flex items-center gap-4 p-5 rounded-2xl bg-blue-50/50 border border-blue-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
+                  <div className="bg-blue-600 p-3 rounded-xl text-white shadow-md"><InformationCircleIcon className="h-6 w-6" /></div>
+                  <div><h4 className="font-black text-blue-900">ভোটকেন্দ্র তথ্য</h4><p className="text-[10px] text-blue-700 font-bold">বিস্তারিত বিবরণ</p></div>
+                </button>
+                <a href={selectedCenter.locationLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-5 rounded-2xl bg-rose-50/50 border border-rose-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
+                  <div className="bg-rose-600 p-3 rounded-xl text-white shadow-md"><MapPinIcon className="h-6 w-6" /></div>
+                  <div><h4 className="font-black text-rose-900">অবস্থান ম্যাপ</h4><p className="text-[10px] text-rose-700 font-bold">গুগল ম্যাপে দেখুন</p></div>
+                </a>
+                <button onClick={() => setView('PERSONS')} className="flex items-center gap-4 p-5 rounded-2xl bg-emerald-50/50 border border-emerald-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
+                  <div className="bg-army-green p-3 rounded-xl text-white shadow-md"><UserGroupIcon className="h-6 w-6" /></div>
+                  <div><h4 className="font-black text-emerald-900">যোগাযোগ</h4><p className="text-[10px] text-emerald-700 font-bold">ব্যক্তিবর্গ ও নম্বর</p></div>
+                </button>
               </div>
             </div>
           </div>
         )}
 
         {view === 'CENTER_INFO' && selectedCenter && (
-          <div className="animate-fadeIn space-y-4">
-            <div className="bg-white rounded-3xl p-6 md:p-10 shadow-lg border border-slate-50">
+          <div className="animate-fadeIn space-y-4 max-w-lg mx-auto pb-12">
+            <div className="bg-white rounded-3xl p-8 shadow-lg border border-slate-200 text-gray-900">
               <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-black text-gray-800 flex items-center gap-4">
-                  <div className="p-2 bg-blue-100 rounded-lg"><InformationCircleIcon className="h-6 w-6 text-blue-600" /></div>
-                  কেন্দ্রের তথ্যাদি
-                </h2>
-                <button onClick={goBack} className="p-2 text-slate-300 hover:text-slate-500"><XMarkIcon className="h-6 w-6" /></button>
+                <h2 className="text-xl font-black text-gray-900">কেন্দ্রের তথ্যাদি</h2>
+                <button onClick={goBack} className="text-gray-500 p-1 hover:text-gray-900 transition-colors cursor-pointer"><XMarkIcon className="h-6 w-6" /></button>
               </div>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl">
-                  <InboxStackIcon className="h-6 w-6 text-blue-600" />
-                  <div>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">ভোট কক্ষের সংখ্যা</p>
-                    <p className="font-black text-gray-800">{selectedCenter.boothCount || 'N/A'}</p>
-                  </div>
+              <div className="space-y-6">
+                <div className="flex items-center gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="p-3 bg-blue-100 rounded-xl"><InboxStackIcon className="h-6 w-6 text-blue-600" /></div>
+                  <div><p className="text-[10px] font-black text-gray-700 uppercase tracking-widest">ভোট কক্ষের সংখ্যা</p><p className="font-black text-xl text-gray-900">{selectedCenter.boothCount || 'N/A'}</p></div>
                 </div>
-                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl">
-                  <UserGroupIcon className="h-6 w-6 text-emerald-600" />
-                  <div>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">মোট ভোটার</p>
-                    <p className="font-black text-gray-800">{selectedCenter.voterCount || 'N/A'}</p>
-                  </div>
+                <div className="flex items-center gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="p-3 bg-emerald-100 rounded-xl"><UserGroupIcon className="h-6 w-6 text-emerald-600" /></div>
+                  <div><p className="text-[10px] font-black text-gray-700 uppercase tracking-widest">মোট ভোটার</p><p className="font-black text-xl text-gray-900">{selectedCenter.voterCount || 'N/A'}</p></div>
                 </div>
-                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl">
-                  <BuildingOfficeIcon className="h-6 w-6 text-rose-600" />
-                  <div>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">অবস্থান ও তলা</p>
-                    <p className="font-black text-gray-800">{selectedCenter.roomLocation || 'N/A'}</p>
-                  </div>
+                <div className="flex items-center gap-5 p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="p-3 bg-rose-100 rounded-xl"><BuildingOfficeIcon className="h-6 w-6 text-rose-600" /></div>
+                  <div><p className="text-[10px] font-black text-gray-700 uppercase tracking-widest">অবস্থান ও তলা</p><p className="font-black text-xl text-gray-900 leading-tight">{selectedCenter.roomLocation || 'N/A'}</p></div>
                 </div>
               </div>
             </div>
@@ -497,58 +743,53 @@ const App: React.FC = () => {
         )}
 
         {view === 'PERSONS' && selectedCenter && (
-          <div className="animate-fadeIn space-y-4">
-            <div className="flex items-center justify-between px-2 mb-4">
-              <h2 className="text-xl font-black text-gray-800">যোগাযোগের তালিকা</h2>
-              <button onClick={goBack} className="p-2 text-slate-300"><XMarkIcon className="h-6 w-6" /></button>
+          <div className="animate-fadeIn space-y-4 max-w-lg mx-auto pb-12">
+            <div className="flex items-center justify-between mb-6 px-2 text-gray-900">
+              <h2 className="text-xl font-black text-gray-900">যোগাযোগের তালিকা</h2>
+              <button onClick={goBack} className="text-gray-500 p-1 hover:text-gray-900 transition-colors cursor-pointer"><XMarkIcon className="h-6 w-6" /></button>
             </div>
-            {selectedCenter.importantPersons.map((p) => (
-              <div key={p.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between gap-4">
-                <div className="flex-1">
-                  <h3 className="font-black text-gray-800 leading-tight">{p.name}</h3>
-                  <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">{p.designation}</p>
-                  <p className="mt-2 text-army-green font-black text-sm">{p.mobile}</p>
+            <div className="space-y-4">
+              {selectedCenter.importantPersons.map((p) => (
+                <div key={p.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="font-black text-gray-900 text-lg leading-tight">{p.name}</h3>
+                    <p className="text-[10px] text-gray-700 font-bold uppercase tracking-widest mt-0.5">{p.designation}</p>
+                    <p className="mt-2 text-army-green font-black text-lg">{p.mobile}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <a href={`tel:${p.mobile}`} className="p-3 bg-blue-600 text-white rounded-xl shadow-md active:scale-90 transition-transform cursor-pointer"><PhoneIcon className="h-5 w-5" /></a>
+                    <a href={`https://wa.me/${p.mobile.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-emerald-600 text-white rounded-xl shadow-md active:scale-90 transition-transform cursor-pointer"><ChatBubbleLeftRightIcon className="h-5 w-5" /></a>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <a href={`tel:${p.mobile}`} className="p-3 bg-blue-600 text-white rounded-xl shadow-md"><PhoneIcon className="h-5 w-5" /></a>
-                  <a href={`https://wa.me/${p.mobile.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="p-3 bg-emerald-500 text-white rounded-xl shadow-md"><ChatBubbleLeftRightIcon className="h-5 w-5" /></a>
-                </div>
-              </div>
-            ))}
+              ))}
+              {selectedCenter.importantPersons.length === 0 && (
+                <p className="text-center py-10 text-gray-600 font-bold italic">কোন যোগাযোগ নম্বর পাওয়া যায়নি</p>
+              )}
+            </div>
           </div>
-        )}
-
-        {/* ADMIN, SETTINGS, EDIT views remain largely similar but follow cleaner padding */}
-        {view === 'ADMIN_LOGIN' && (
-           <div className="max-w-xs mx-auto mt-20 bg-white p-8 rounded-3xl shadow-xl border-t-8 border-orange-500">
-             <h2 className="text-xl font-black text-center mb-6">অ্যাডমিন কন্ট্রোল</h2>
-             <form onSubmit={handleAdminLogin} className="space-y-4">
-               <input type="password" autoFocus className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-transparent focus:border-orange-500 outline-none text-center font-black" value={inputAdminPassword} onChange={e => setInputAdminPassword(e.target.value)} />
-               {adminError && <p className="text-red-600 text-[10px] text-center">{adminError}</p>}
-               <button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-xl font-black shadow-lg">প্রবেশ করুন</button>
-             </form>
-           </div>
         )}
       </main>
 
       {/* Simplified Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-xl px-6 py-3 flex justify-between items-center z-50 md:hidden">
-        <button onClick={goBack} className="flex flex-col items-center text-slate-400 active:text-army-green transition-colors">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-xl px-4 py-3 flex justify-between items-center z-50 md:hidden h-16">
+        <button onClick={goBack} className="flex-1 flex flex-col items-center text-gray-700 active:text-army-green transition-all cursor-pointer">
           <ArrowLeftIcon className="h-6 w-6" />
-          <span className="text-[9px] font-black mt-1 uppercase">পিছনে</span>
+          <span className="text-[8px] font-black mt-1 uppercase">পিছনে</span>
         </button>
         
-        <button onClick={goHome} className="bg-army-green text-white p-4 rounded-2xl shadow-xl -mt-10 border-4 border-slate-50 active:scale-95 transition-all">
-          <HomeIcon className="h-7 w-7" />
-        </button>
+        <div className="flex-1 flex justify-center -mt-8 relative z-[60]">
+          <button onClick={goHome} className="bg-army-green text-white p-4 rounded-2xl shadow-xl border-4 border-slate-50 active:scale-95 transition-all cursor-pointer">
+            <HomeIcon className="h-7 w-7" />
+          </button>
+        </div>
 
-        <button onClick={toggleSidebar} className="flex flex-col items-center text-slate-400 active:text-army-green transition-colors">
+        <button onClick={toggleSidebar} className="flex-1 flex flex-col items-center text-gray-700 active:text-army-green transition-all cursor-pointer">
           <Bars3Icon className="h-6 w-6" />
-          <span className="text-[9px] font-black mt-1 uppercase">মেনু</span>
+          <span className="text-[8px] font-black mt-1 uppercase">মেনু</span>
         </button>
       </nav>
 
-      <footer className="hidden md:block text-center py-10 text-slate-300 text-[9px] font-black uppercase tracking-[0.4em] border-t border-slate-50 mt-10">
+      <footer className="hidden md:block text-center py-10 text-gray-700 text-[9px] font-black uppercase tracking-[0.4em] border-t border-slate-200 mt-auto">
         EPZ ARMY SECURITY DASHBOARD • 2026
       </footer>
 
@@ -560,11 +801,16 @@ const App: React.FC = () => {
           font-display: swap;
           src: url(https://fonts.gstatic.com/s/hindsiliguri/v12/ijwbRE69Lv_n96G8UuE-P1u9o9id772V.woff2) format('woff2');
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInFast { from { opacity: 0; } to { opacity: 1; } }
-        .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
         .animate-fadeInFast { animation: fadeInFast 0.2s ease-out forwards; }
-        body { -webkit-tap-highlight-color: transparent; }
+        body { -webkit-tap-highlight-color: transparent; background-color: #f8fafc; color: #111827; }
+        * { box-sizing: border-box; }
+        input::placeholder { font-weight: 600; color: #64748b; }
+        main::-webkit-scrollbar { width: 0; height: 0; }
+        .cursor-text { cursor: text !important; }
+        .cursor-pointer { cursor: pointer !important; }
       `}</style>
     </div>
   );
