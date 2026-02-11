@@ -10,56 +10,47 @@
     <style>
         :root {
             --army-green: #0b3d2e;
-            --army-green-light: #14533d;
-            --army-gold: #d4a017;
-            --army-gold-light: #f1c40f;
-            --surface-bg: #fdfdfd;
+            --army-green-soft: #14533d;
+            --army-gold: #c69b12;
+            --bg-main: #fcfcfd;
+            --text-primary: #1a202c;
+            --text-secondary: #4a5568;
         }
         body {
             font-family: 'Hind Siliguri', sans-serif;
-            background-color: var(--surface-bg);
-            color: #1a202c;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
         }
-        .bg-army-green { background-color: var(--army-green); }
         .text-army-green { color: var(--army-green); }
+        .bg-army-green { background-color: var(--army-green); }
         .bg-army-gold { background-color: var(--army-gold); }
-        .text-army-gold { color: var(--army-gold); }
         
-        .army-card {
+        /* Minimalist Card Style */
+        .clean-card {
             background: white;
-            border-radius: 28px;
-            box-shadow: 0 10px 30px -10px rgba(0, 77, 48, 0.08);
-            border: 1px solid #f1f5f9;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid #edf2f7;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            transition: all 0.2s ease-in-out;
         }
-        .army-card:hover {
-            transform: translateY(-6px) scale(1.02);
-            box-shadow: 0 20px 40px -12px rgba(0, 77, 48, 0.15);
-            border-color: var(--army-green-light);
-        }
-
-        .btn-shadow {
-            box-shadow: 0 8px 20px -6px rgba(0, 77, 48, 0.3);
+        .clean-card:hover {
+            border-color: #cbd5e0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
-        /* Glassmorphism for specific elements */
-        .glass {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
+        /* High Readability Adjustments */
+        h1, h2, h3 { letter-spacing: -0.01em; }
+        p { line-height: 1.6; }
 
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 5px; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--army-green-light); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         
-        /* Animation delays */
-        .delay-100 { animation-delay: 100ms; }
-        .delay-200 { animation-delay: 200ms; }
-        .delay-300 { animation-delay: 300ms; }
+        /* Mobile Touch targets */
+        button, a { min-height: 44px; }
     </style>
 <script type="importmap">
 {
