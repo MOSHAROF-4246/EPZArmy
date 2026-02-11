@@ -28,7 +28,6 @@ import {
   ExclamationCircleIcon,
   CheckCircleIcon,
   MapIcon,
-  // Fix: Added missing icon import for logout button
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/solid';
 
@@ -126,7 +125,8 @@ const App: React.FC = () => {
   // Edit State
   const [editCenter, setEditCenter] = useState<Partial<VotingCenter>>({});
   const [tempEmergency, setTempEmergency] = useState<EmergencyContact>({ name: '', mobile: '' });
-  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load Google Maps script once
@@ -372,8 +372,9 @@ const App: React.FC = () => {
       const mapOptions = {
         center: initialPos,
         zoom: 15,
-        mapTypeControl: false,
+        mapTypeControl: true,
         streetViewControl: false,
+        fullscreenControl: false
       };
 
       gMapRef.current = new google.maps.Map(mapContainerRef.current, mapOptions);
@@ -385,8 +386,14 @@ const App: React.FC = () => {
         animation: google.maps.Animation.DROP,
       });
 
+      // Update position on map click
       gMapRef.current.addListener('click', (e: any) => {
         gMarkerRef.current.setPosition(e.latLng);
+      });
+      
+      // Handle marker drag
+      gMarkerRef.current.addListener('dragend', (e: any) => {
+        gMapRef.current.panTo(e.latLng);
       });
     }
   }, [showMapPicker]);
@@ -414,7 +421,7 @@ const App: React.FC = () => {
         gMapRef.current.setZoom(17);
         gMarkerRef.current.setPosition(pos);
       } else {
-        console.error("Geocode was not successful: " + status);
+        showModal({ title: 'ত্রুটি', message: 'জায়গাটি খুঁজে পাওয়া যায়নি!', type: 'WARNING' });
       }
     });
   };
@@ -734,39 +741,72 @@ const App: React.FC = () => {
 
         {view === 'SETTINGS' && (
           <div className="max-w-md mx-auto animate-fadeIn">
-            <div className="bg-white p-8 rounded-3xl shadow-xl border-t-8 border-army-green">
+            <div className="bg-white p-8 rounded-3xl shadow-xl border-t-8 border-army-green space-y-8">
               <h2 className="text-xl font-black mb-6 flex items-center gap-3 text-black">
                 <KeyIcon className="h-6 w-6 text-army-green" />
                 পাসওয়ার্ড পরিবর্তন
               </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-black text-black uppercase ml-1">নতুন পাসওয়ার্ড</label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-400 focus:border-army-green outline-none font-black text-center cursor-text text-black placeholder-gray-500"
-                    value={newPasswordValue}
-                    onChange={(e) => setNewPasswordValue(e.target.value)}
-                  />
+              
+              <div className="space-y-6">
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                  <h3 className="text-sm font-black mb-4 flex items-center gap-2">
+                    <UserGroupIcon className="h-4 w-4 text-army-green" /> ইউজার পাসওয়ার্ড
+                  </h3>
+                  <div className="space-y-4">
+                    <input
+                      type="password"
+                      placeholder="নতুন ইউজার পাসওয়ার্ড"
+                      className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-300 focus:border-army-green outline-none font-black text-center cursor-text text-black"
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                    />
+                    <button 
+                      onClick={() => {
+                        if (!newUserPassword) {
+                          showModal({ title: 'ত্রুটি', message: 'পাসওয়ার্ড প্রদান করুন!', type: 'WARNING' });
+                          return;
+                        }
+                        setUserPassword(newUserPassword);
+                        setNewUserPassword('');
+                        showModal({ title: 'সাফল্য', message: 'ইউজার পাসওয়ার্ড সফলভাবে পরিবর্তিত হয়েছে!', type: 'SUCCESS' });
+                      }}
+                      className="w-full py-3 bg-army-green text-white rounded-xl font-black shadow-md active:scale-95 transition-all cursor-pointer"
+                    >
+                      ইউজার পাসওয়ার্ড আপডেট করুন
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-3">
-                  <button onClick={goHome} className="flex-1 py-3 bg-slate-100 text-black rounded-xl font-black active:scale-95 cursor-pointer">বাতিল</button>
-                  <button 
-                    onClick={() => {
-                      if (!newPasswordValue) {
-                        showModal({ title: 'ত্রুটি', message: 'পাসওয়ার্ড প্রদান করুন!', type: 'WARNING' });
-                        return;
-                      }
-                      setUserPassword(newPasswordValue);
-                      setNewPasswordValue('');
-                      showModal({ title: 'সাফল্য', message: 'পাসওয়ার্ড সফলভাবে পরিবর্তিত হয়েছে!', type: 'SUCCESS', onConfirm: goHome });
-                    }}
-                    className="flex-1 py-3 bg-army-green text-white rounded-xl font-black shadow-lg active:scale-95 cursor-pointer"
-                  >
-                    সেভ করুন
-                  </button>
+
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                  <h3 className="text-sm font-black mb-4 flex items-center gap-2">
+                    <Cog6ToothIcon className="h-4 w-4 text-orange-600" /> অ্যাডমিন পিন
+                  </h3>
+                  <div className="space-y-4">
+                    <input
+                      type="password"
+                      placeholder="নতুন অ্যাডমিন পিন"
+                      className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-300 focus:border-orange-600 outline-none font-black text-center cursor-text text-black"
+                      value={newAdminPassword}
+                      onChange={(e) => setNewAdminPassword(e.target.value)}
+                    />
+                    <button 
+                      onClick={() => {
+                        if (!newAdminPassword) {
+                          showModal({ title: 'ত্রুটি', message: 'পিন প্রদান করুন!', type: 'WARNING' });
+                          return;
+                        }
+                        setAdminPassword(newAdminPassword);
+                        setNewAdminPassword('');
+                        showModal({ title: 'সাফল্য', message: 'অ্যাডমিন পিন সফলভাবে পরিবর্তিত হয়েছে!', type: 'SUCCESS' });
+                      }}
+                      className="w-full py-3 bg-orange-600 text-white rounded-xl font-black shadow-md active:scale-95 transition-all cursor-pointer"
+                    >
+                      অ্যাডমিন পিন আপডেট করুন
+                    </button>
+                  </div>
                 </div>
+
+                <button onClick={goHome} className="w-full py-3 bg-slate-200 text-black rounded-xl font-black active:scale-95 cursor-pointer">ফিরে যান</button>
               </div>
             </div>
           </div>
