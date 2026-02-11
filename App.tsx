@@ -9,7 +9,7 @@ import {
   InformationCircleIcon, 
   PhoneIcon, 
   ChatBubbleLeftRightIcon,
-  HomeIcon,
+  HomeIcon, 
   ArrowLeftIcon,
   LockClosedIcon,
   Bars3Icon,
@@ -259,8 +259,13 @@ const App: React.FC = () => {
       confirmText: 'মুছে ফেলুন',
       onConfirm: () => {
         setCenters(prevCenters => {
-          const updated = prevCenters.filter(c => c.id !== id);
-          return updated;
+          // 1. Filter out the deleted center
+          const filtered = prevCenters.filter(c => c.id !== id);
+          // 2. Re-sequence all serial numbers automatically
+          return filtered.map((c, index) => ({
+            ...c,
+            centerNumber: toBengaliDigits((index + 1).toString().padStart(2, '0'))
+          }));
         });
         if (selectedCenter?.id === id) {
           setSelectedCenter(null);
@@ -311,13 +316,19 @@ const App: React.FC = () => {
 
     setCenters(prev => {
       const existsIndex = prev.findIndex(c => c.id === editCenter.id);
+      let updated;
       if (existsIndex > -1) {
-        const updated = [...prev];
+        updated = [...prev];
         updated[existsIndex] = finalCenter;
-        return updated;
       } else {
-        return [...prev, finalCenter];
+        updated = [...prev, finalCenter];
       }
+      
+      // Re-sequence all centers to maintain perfect serial order
+      return updated.map((c, index) => ({
+        ...c,
+        centerNumber: toBengaliDigits((index + 1).toString().padStart(2, '0'))
+      }));
     });
     
     showModal({
@@ -502,7 +513,7 @@ const App: React.FC = () => {
               </button>
             </div>
             <h2 className="text-2xl font-black mb-1">ইপিজেড আর্মি</h2>
-            <p className="text-[9px] opacity-80 font-black uppercase tracking-widest">Dashboard v3.6</p>
+            <p className="text-[9px] opacity-80 font-black uppercase tracking-widest">Dashboard v3.7</p>
           </div>
         </div>
 
@@ -518,7 +529,7 @@ const App: React.FC = () => {
               <Cog6ToothIcon className="h-5 w-5" />
               <span className="text-sm">অ্যাডমিন প্যানেল</span>
             </button>
-            <button onClick={() => { exportData(); setIsSidebarOpen(false); }} className="flex items-center gap-4 w-full p-4 rounded-xl text-black hover:bg-gray-100 font-bold transition-all cursor-pointer">
+            <button onClick={() => { exportData(); setIsSidebarOpen(false); }} className="flex i-center gap-4 w-full p-4 rounded-xl text-black hover:bg-gray-100 font-bold transition-all cursor-pointer">
               <ArrowDownTrayIcon className="h-5 w-5" />
               <span className="text-sm">ব্যাকআপ ডাটা</span>
             </button>
