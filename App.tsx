@@ -30,7 +30,8 @@ import {
   StarIcon,
   ArrowRightOnRectangleIcon,
   ExclamationCircleIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  MapIcon
 } from '@heroicons/react/24/solid';
 
 // Helper to convert English digits to Bengali digits
@@ -93,6 +94,13 @@ const App: React.FC = () => {
   const [adminError, setAdminError] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
+  
+  // Map States
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const [mapSearchTerm, setMapSearchTerm] = useState('');
 
   // Modal State
   const [modal, setModal] = useState<CustomModalProps>({
@@ -259,9 +267,7 @@ const App: React.FC = () => {
       confirmText: 'মুছে ফেলুন',
       onConfirm: () => {
         setCenters(prevCenters => {
-          // 1. Filter out the deleted center
           const filtered = prevCenters.filter(c => c.id !== id);
-          // 2. Re-sequence all serial numbers automatically
           return filtered.map((c, index) => ({
             ...c,
             centerNumber: toBengaliDigits((index + 1).toString().padStart(2, '0'))
@@ -323,8 +329,6 @@ const App: React.FC = () => {
       } else {
         updated = [...prev, finalCenter];
       }
-      
-      // Re-sequence all centers to maintain perfect serial order
       return updated.map((c, index) => ({
         ...c,
         centerNumber: toBengaliDigits((index + 1).toString().padStart(2, '0'))
@@ -337,6 +341,71 @@ const App: React.FC = () => {
       type: 'SUCCESS'
     });
     setView('ADMIN');
+  };
+
+  // Map Logic
+  useEffect(() => {
+    if (showMapPicker && mapContainerRef.current) {
+      // Default to Patenga area
+      const defaultPos: [number, number] = [22.2513, 91.7915];
+      let initialPos = defaultPos;
+
+      // Try to extract coords from existing link
+      const coordMatch = editCenter.locationLink?.match(/q=([\d.]+),([\d.]+)/);
+      if (coordMatch) {
+        initialPos = [parseFloat(coordMatch[1]), parseFloat(coordMatch[2])];
+      }
+
+      const L = (window as any).L;
+      if (!leafletMapRef.current) {
+        leafletMapRef.current = L.map(mapContainerRef.current).setView(initialPos, 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(leafletMapRef.current);
+
+        markerRef.current = L.marker(initialPos, { draggable: true }).addTo(leafletMapRef.current);
+        
+        leafletMapRef.current.on('click', (e: any) => {
+          markerRef.current.setLatLng(e.latlng);
+        });
+      } else {
+        leafletMapRef.current.setView(initialPos, 15);
+        markerRef.current.setLatLng(initialPos);
+      }
+    }
+  }, [showMapPicker]);
+
+  const handleMapConfirm = () => {
+    const pos = markerRef.current.getLatLng();
+    const gMapsLink = `https://www.google.com/maps?q=${pos.lat},${pos.lng}`;
+    setEditCenter({ ...editCenter, locationLink: gMapsLink });
+    setShowMapPicker(false);
+  };
+
+  const handleMapSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mapSearchTerm) return;
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(mapSearchTerm + ', Chattogram, Bangladesh')}`);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        const pos = [parseFloat(lat), parseFloat(lon)];
+        leafletMapRef.current.setView(pos, 16);
+        markerRef.current.setLatLng(pos);
+      }
+    } catch (err) {
+      console.error("Search failed", err);
+    }
+  };
+
+  // Helper to extract lat/lng for iframe preview
+  const getMapEmbedUrl = (link: string) => {
+    const match = link?.match(/q=([\d.]+),([\d.]+)/);
+    if (match) {
+      return `https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(match[2])-0.005}%2C${parseFloat(match[1])-0.005}%2C${parseFloat(match[2])+0.005}%2C${parseFloat(match[1])+0.005}&layer=mapnik&marker=${match[1]}%2C${match[2]}`;
+    }
+    return null;
   };
 
   const addPersonToEdit = () => {
@@ -475,6 +544,35 @@ const App: React.FC = () => {
     <div className="min-h-screen pb-20 md:pb-8 flex flex-col bg-slate-50 overflow-x-hidden font-['Hind_Siliguri'] antialiased text-black">
       <ModalPortal />
       
+      {/* Map Picker Modal */}
+      {showMapPicker && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-4 bg-army-green text-white flex justify-between items-center">
+                <h3 className="font-black">অবস্থান চিহ্নিত করুন</h3>
+                <button onClick={() => setShowMapPicker(false)}><XMarkIcon className="h-6 w-6" /></button>
+            </div>
+            <div className="p-4 bg-gray-100">
+               <form onSubmit={handleMapSearch} className="flex gap-2">
+                 <input 
+                   type="text" 
+                   className="flex-1 px-4 py-2 rounded-xl border-2 border-gray-300 font-bold text-sm" 
+                   placeholder="জায়গার নাম লিখে খুঁজুন..." 
+                   value={mapSearchTerm}
+                   onChange={e => setMapSearchTerm(e.target.value)}
+                 />
+                 <button type="submit" className="bg-army-gold text-army-green px-4 py-2 rounded-xl font-black">খুঁজুন</button>
+               </form>
+            </div>
+            <div ref={mapContainerRef} className="flex-1 w-full min-h-[300px]"></div>
+            <div className="p-4 border-t flex gap-4">
+              <button onClick={() => setShowMapPicker(false)} className="flex-1 py-3 bg-gray-200 rounded-xl font-black">বাতিল</button>
+              <button onClick={handleMapConfirm} className="flex-1 py-3 bg-army-green text-white rounded-xl font-black">নিশ্চিত করুন</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SOS Modal */}
       {showSOS && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeInFast">
@@ -513,7 +611,7 @@ const App: React.FC = () => {
               </button>
             </div>
             <h2 className="text-2xl font-black mb-1">ইপিজেড আর্মি</h2>
-            <p className="text-[9px] opacity-80 font-black uppercase tracking-widest">Dashboard v3.7</p>
+            <p className="text-[9px] opacity-80 font-black uppercase tracking-widest">Dashboard v3.8</p>
           </div>
         </div>
 
@@ -529,7 +627,7 @@ const App: React.FC = () => {
               <Cog6ToothIcon className="h-5 w-5" />
               <span className="text-sm">অ্যাডমিন প্যানেল</span>
             </button>
-            <button onClick={() => { exportData(); setIsSidebarOpen(false); }} className="flex i-center gap-4 w-full p-4 rounded-xl text-black hover:bg-gray-100 font-bold transition-all cursor-pointer">
+            <button onClick={() => { exportData(); setIsSidebarOpen(false); }} className="flex items-center gap-4 w-full p-4 rounded-xl text-black hover:bg-gray-100 font-bold transition-all cursor-pointer">
               <ArrowDownTrayIcon className="h-5 w-5" />
               <span className="text-sm">ব্যাকআপ ডাটা</span>
             </button>
@@ -799,7 +897,20 @@ const App: React.FC = () => {
 
                 <div>
                   <label className="text-[10px] font-black text-black uppercase ml-1">গুগল ম্যাপ লিংক</label>
-                  <input placeholder="URL পেস্ট করুন" className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-400 focus:border-army-green outline-none font-mono text-xs cursor-text text-black placeholder-gray-500" value={editCenter.locationLink || ''} onChange={e => setEditCenter({ ...editCenter, locationLink: e.target.value })} />
+                  <div className="flex gap-2">
+                    <input 
+                      placeholder="URL পেস্ট করুন বা ম্যাপ থেকে নিন" 
+                      className="flex-1 px-4 py-3 rounded-xl bg-slate-50 border-2 border-gray-400 focus:border-army-green outline-none font-mono text-xs cursor-text text-black placeholder-gray-500" 
+                      value={editCenter.locationLink || ''} 
+                      onChange={e => setEditCenter({ ...editCenter, locationLink: e.target.value })} 
+                    />
+                    <button 
+                        onClick={() => setShowMapPicker(true)}
+                        className="bg-army-gold text-army-green p-3 rounded-xl shadow-md border border-army-gold/30 flex items-center justify-center"
+                    >
+                        <MapIcon className="h-6 w-6" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="border-t border-slate-300 pt-6">
@@ -843,6 +954,19 @@ const App: React.FC = () => {
               </div>
               <div className="bg-army-gold text-army-green px-4 py-1 rounded-lg text-[10px] font-black inline-block mb-4 relative z-10 shadow-sm">কেন্দ্র নং {selectedCenter.centerNumber}</div>
               <h2 className="text-2xl font-black text-black mb-8 relative z-10 leading-tight">{selectedCenter.name}</h2>
+              
+              <div className="mb-8 rounded-2xl overflow-hidden border-2 border-slate-200 relative">
+                {getMapEmbedUrl(selectedCenter.locationLink) ? (
+                   <iframe 
+                     title="Location"
+                     className="w-full h-48 border-none"
+                     src={getMapEmbedUrl(selectedCenter.locationLink)!}
+                   ></iframe>
+                ) : (
+                   <div className="h-48 bg-slate-100 flex items-center justify-center font-bold text-gray-500">মানচিত্রের অবস্থান নেই</div>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 gap-4 relative z-10">
                 <button onClick={() => setView('CENTER_INFO')} className="flex items-center gap-4 p-5 rounded-2xl bg-blue-50/50 border border-blue-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
                   <div className="bg-army-green p-3 rounded-xl text-army-gold shadow-md"><InformationCircleIcon className="h-6 w-6" /></div>
@@ -850,7 +974,7 @@ const App: React.FC = () => {
                 </button>
                 <a href={selectedCenter.locationLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-5 rounded-2xl bg-rose-50/50 border border-rose-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
                   <div className="bg-army-green p-3 rounded-xl text-army-gold shadow-md"><MapPinIcon className="h-6 w-6" /></div>
-                  <div><h4 className="font-black text-rose-950">অবস্থান ম্যাপ</h4><p className="text-[10px] text-rose-800 font-black">গুগল ম্যাপে দেখুন</p></div>
+                  <div><h4 className="font-black text-rose-950">ম্যাপ অ্যাপে দেখুন</h4><p className="text-[10px] text-rose-800 font-black">গুগল ম্যাপে যান</p></div>
                 </a>
                 <button onClick={() => setView('PERSONS')} className="flex items-center gap-4 p-5 rounded-2xl bg-emerald-50/50 border border-emerald-200 text-left active:scale-95 transition-all cursor-pointer shadow-sm">
                   <div className="bg-army-green p-3 rounded-xl text-army-gold shadow-md"><UserGroupIcon className="h-6 w-6" /></div>
