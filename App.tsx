@@ -47,6 +47,10 @@ interface CustomModalProps {
 }
 
 const App: React.FC = () => {
+  // Gemini AI Initialization
+  // Note: ai instance is initialized as per developer guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+
   // Persistence logic - Centers
   const [centers, setCenters] = useState<VotingCenter[]>(() => {
     const saved = localStorage.getItem('voting_centers_data_v5');
@@ -124,7 +128,7 @@ const App: React.FC = () => {
 
   // Load Maps Script properly
   useEffect(() => {
-    if ((window as any).google) return;
+    if (typeof window === 'undefined' || (window as any).google) return;
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.API_KEY || ''}&libraries=places`;
     script.async = true;
@@ -282,6 +286,32 @@ const App: React.FC = () => {
     return match ? `https://maps.google.com/maps?q=${match[1]},${match[2]}&hl=bn&z=15&output=embed` : null;
   };
 
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-6">
+        <div className="max-w-sm w-full bg-white rounded-3xl shadow-xl p-10 text-center animate-fadeIn">
+          <div className="bg-army-green w-16 h-16 rounded-2xl mx-auto mb-8 flex items-center justify-center shadow-lg">
+            <ShieldCheckIcon className="h-8 w-8 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold mb-1">স্বাগতম</h2>
+          <p className="text-slate-400 text-sm mb-10">পাসওয়ার্ড দিয়ে প্রবেশ করুন</p>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <input 
+              type="password" 
+              placeholder="পাসওয়ার্ড" 
+              className="w-full px-5 py-4 rounded-xl border border-slate-200 focus:border-army-green outline-none text-center font-bold tracking-widest text-lg bg-slate-50" 
+              value={inputPassword} 
+              autoFocus 
+              onChange={(e) => setInputPassword(e.target.value)} 
+            />
+            {loginError && <p className="text-red-500 text-xs font-bold">{loginError}</p>}
+            <button type="submit" className="w-full bg-army-green text-white py-4 rounded-xl font-bold shadow-sm active:scale-95 transition-all">প্রবেশ করুন</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#fdfdfd] text-[#1a202c]">
       {/* Header */}
@@ -301,7 +331,7 @@ const App: React.FC = () => {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-4xl mx-auto w-full p-6">
+      <main className="flex-1 max-w-4xl mx-auto w-full p-6 pb-24 md:pb-12">
         {view === 'HOME' && (
           <div className="space-y-8 animate-fadeIn">
             <div className="relative group">
@@ -531,7 +561,6 @@ const App: React.FC = () => {
               </h2>
               
               <div className="space-y-8">
-                {/* User Password */}
                 <div className="space-y-4">
                   <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-2">ইউজার পাসওয়ার্ড</p>
                   <input 
@@ -551,7 +580,6 @@ const App: React.FC = () => {
 
                 <div className="h-px bg-slate-100 w-full"></div>
 
-                {/* Admin Password */}
                 <div className="space-y-4">
                   <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-2">অ্যাডমিন পিন কোড</p>
                   <input 
